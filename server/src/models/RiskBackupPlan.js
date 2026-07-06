@@ -33,6 +33,10 @@ const RiskBackupPlan = sequelize.define('RiskBackupPlan', {
     allowNull: true,
     references: { model: 'users', key: 'id' },
   },
+  sort_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+  },
   status: {
     type: DataTypes.ENUM('identified', 'mitigated', 'resolved'),
     defaultValue: 'identified',

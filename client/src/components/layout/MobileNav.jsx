@@ -17,7 +17,7 @@ const items = [
 
 export default function MobileNav() {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden" aria-label="Navigasi mobile">
       {/* Gradient fade */}
       <div className="h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
 
@@ -28,6 +28,7 @@ export default function MobileNav() {
               key={item.to}
               to={item.to}
               end={item.to === '/'}
+              aria-label={item.label}
               className={({ isActive }) =>
                 `flex flex-col items-center justify-center gap-0.5 px-2 py-1 rounded-xl transition-all duration-150 min-w-[56px] ${
                   item.accent
@@ -40,7 +41,7 @@ export default function MobileNav() {
                 }`
               }
             >
-              <item.icon className={`w-5 h-5 ${item.accent ? 'stroke-[2.5]' : ''}`} />
+              <item.icon className={`w-5 h-5 ${item.accent ? 'stroke-[2.5]' : ''}`} aria-hidden="true" />
               <span className={`text-[10px] font-semibold leading-none ${item.accent ? 'text-white' : ''}`}>
                 {item.label}
               </span>

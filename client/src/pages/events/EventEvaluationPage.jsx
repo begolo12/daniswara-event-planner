@@ -1,105 +1,89 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Plus, Star, Sparkles } from 'lucide-react';
+import { Save, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { evaluations } from '../../services/eventSubService';
 import aiService from '../../services/aiService';
-import { formatDate } from '../../utils/formatters';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
-import Modal from '../../components/ui/Modal';
 import FormInput from '../../components/ui/FormInput';
 import FormTextarea from '../../components/ui/FormTextarea';
-import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
-import EmptyState from '../../components/ui/EmptyState';
-
-const StarRating = ({ value, onChange, readOnly = false }) => {
-  const [hover, setHover] = useState(0);
-  return (
-    <div className="flex items-center gap-0.5">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <button
-          key={star}
-          type="button"
-          disabled={readOnly}
-          onClick={() => onChange && onChange(star)}
-          onMouseEnter={() => !readOnly && setHover(star)}
-          onMouseLeave={() => !readOnly && setHover(0)}
-          className={`${readOnly ? 'cursor-default' : 'cursor-pointer'} transition-colors`}
-        >
-          <Star
-            size={20}
-            className={
-              star <= (hover || value)
-                ? 'text-yellow-400 fill-yellow-400'
-                : 'text-gray-300'
-            }
-          />
-        </button>
-      ))}
-    </div>
-  );
-};
-
-const initialForm = {
-  rating: 0,
-  comment: '',
-  category: 'overall',
-};
-
-const categoryOptions = [
-  { value: 'overall', label: 'Keseluruhan' },
-  { value: 'venue', label: 'Tempat' },
-  { value: 'catering', label: 'Catering' },
-  { value: 'organization', label: 'Organisasi' },
-  { value: 'entertainment', label: 'Hiburan' },
-];
 
 export default function EventEvaluationPage() {
   const { id: eventId } = useParams();
-  const [evalList, setEvalList] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState(initialForm);
   const [submitting, setSubmitting] = useState(false);
   const [generating, setGenerating] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [hasEval, setHasEval] = useState(false);
 
-  const fetchEvals = useCallback(async () => {
+  const [form, setForm] = useState({
+    rating: '',
+    actual_participants: '',
+    rundown_compliance: '',
+    issues_encountered: '',
+    budget_planned: '',
+    budget_actual: '',
+    feedback_summary: '',
+    documentation_notes: '',
+    improvement_notes: '',
+    recommendations: '',
+  });
+
+  const fetchEval = useCallback(async () => {
     try {
-      const res = await evaluations.list(eventId);
-      setEvalList(res.data.data || []);
+      const res = await evaluations.get(eventId);
+      const data = res.data.data;
+      if (data) {
+        setHasEval(true);
+        setForm({
+          rating: data.rating || '',
+          actual_participants: data.actual_participants || '',
+          rundown_compliance: data.rundown_compliance || '',
+          issues_encountered: data.issues_encountered || '',
+          budget_planned: data.budget_planned || '',
+          budget_actual: data.budget_actual || '',
+          feedback_summary: data.feedback_summary || '',
+          documentation_notes: data.documentation_notes || '',
+          improvement_notes: data.improvement_notes || '',
+          recommendations: data.recommendations || '',
+        });
+      }
     } catch {
-      toast.error('Gagal memuat evaluasi');
+      // No evaluation yet
     } finally {
       setLoading(false);
     }
   }, [eventId]);
 
   useEffect(() => {
-    fetchEvals();
-  }, [fetchEvals]);
+    fetchEval();
+  }, [fetchEval]);
 
-  const averageRating = useMemo(() => {
-    if (evalList.length === 0) return 0;
-    const total = evalList.reduce((sum, e) => sum + (Number(e.rating) || 0), 0);
-    return (total / evalList.length).toFixed(1);
-  }, [evalList]);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (form.rating === 0) {
-      toast.error('Beri rating terlebih dahulu');
-      return;
-    }
     setSubmitting(true);
     try {
-      await evaluations.create(eventId, form);
-      toast.success('Evaluasi berhasil ditambahkan');
-      setShowForm(false);
-      setForm(initialForm);
-      fetchEvals();
+      const payload = {
+        rating: form.rating ? Number(form.rating) : null,
+        actual_participants: form.actual_participants ? Number(form.actual_participants) : null,
+        rundown_compliance: form.rundown_compliance,
+        issues_encountered: form.issues_encountered,
+        budget_planned: form.budget_planned ? Number(form.budget_planned) : null,
+        budget_actual: form.budget_actual ? Number(form.budget_actual) : null,
+        feedback_summary: form.feedback_summary,
+        documentation_notes: form.documentation_notes,
+        improvement_notes: form.improvement_notes,
+        recommendations: form.recommendations,
+      };
+      await evaluations.create(eventId, payload);
+      toast.success('Evaluasi berhasil disimpan');
+      setHasEval(true);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Gagal menyimpan evaluasi');
     } finally {
@@ -107,25 +91,24 @@ export default function EventEvaluationPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await evaluations.delete(eventId, deleteTarget.id || deleteTarget._id);
-      toast.success('Evaluasi berhasil dihapus');
-      setDeleteTarget(null);
-      fetchEvals();
-    } catch {
-      toast.error('Gagal menghapus evaluasi');
-    }
-  };
-
   const handleGenerateSummary = async () => {
     setGenerating(true);
     try {
       const res = await aiService.generate(eventId, 'evaluation', {});
-      toast.success('Ringkasan evaluasi berhasil digenerate');
-      // Could open a modal or show the result
-      console.log('AI evaluation summary:', res.data.data);
+      const aiData = res.data.data;
+      if (aiData) {
+        // Merge AI results into form
+        if (aiData.improvement_notes) {
+          setForm((prev) => ({ ...prev, improvement_notes: aiData.improvement_notes }));
+        }
+        if (aiData.recommendations) {
+          setForm((prev) => ({ ...prev, recommendations: aiData.recommendations }));
+        }
+        if (aiData.ai_summary) {
+          setForm((prev) => ({ ...prev, feedback_summary: aiData.ai_summary }));
+        }
+        toast.success('Ringkasan evaluasi berhasil digenerate');
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Gagal generate ringkasan');
     } finally {
@@ -145,7 +128,12 @@ export default function EventEvaluationPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-xl font-semibold text-dark-900">Evaluasi Event</h2>
+        <div>
+          <h2 className="text-xl font-semibold text-dark-900">Evaluasi Event</h2>
+          {hasEval && (
+            <p className="text-sm text-green-600 mt-1">✓ Evaluasi sudah tersimpan</p>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -154,131 +142,144 @@ export default function EventEvaluationPage() {
             onClick={handleGenerateSummary}
             loading={generating}
           >
-            Generate Ringkasan dengan AI
-          </Button>
-          <Button variant="primary" size="sm" icon={<Plus />} onClick={() => setShowForm(true)}>
-            Tambah Evaluasi
+            Generate dengan AI
           </Button>
         </div>
       </div>
 
-      {/* Average Rating */}
-      {evalList.length > 0 && (
+      {/* Evaluation Form */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Partisipan & Rundown */}
         <Card>
-          <div className="flex items-center gap-4">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-dark-900">{averageRating}</p>
-              <p className="text-xs text-dark-400">dari 5</p>
-            </div>
+          <h3 className="text-lg font-semibold text-dark-900 mb-4">Data Umum</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <StarRating value={Math.round(Number(averageRating))} readOnly />
-              <p className="text-sm text-dark-500 mt-1">{evalList.length} evaluasi</p>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Rating Event (1-10)</label>
+              <div className="relative">
+                <input
+                  name="rating"
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={form.rating}
+                  onChange={handleChange}
+                  placeholder="Skor 1-10"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+            </div>
+            <FormInput
+              label="Jumlah Peserta Aktual"
+              name="actual_participants"
+              type="number"
+              value={form.actual_participants}
+              onChange={handleChange}
+              placeholder="Jumlah peserta yang hadir"
+            />
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Rencana Anggaran (Rp)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+                <input
+                  name="budget_planned"
+                  type="number"
+                  value={form.budget_planned}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
             </div>
           </div>
-        </Card>
-      )}
-
-      {/* New Evaluation Form */}
-      {showForm && (
-        <Card className="border-brand-200">
-          <h3 className="font-semibold text-dark-900 mb-4">Tambah Evaluasi Baru</h3>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-dark-700 mb-1.5">Rating</label>
-              <StarRating value={form.rating} onChange={(val) => setForm((p) => ({ ...p, rating: val }))} />
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-dark-700 mb-1.5">Kategori</label>
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                >
-                  {categoryOptions.map((o) => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-              <FormInput
-                label="Evaluator"
-                name="evaluator"
-                value={form.evaluator || ''}
-                onChange={(e) => setForm((p) => ({ ...p, evaluator: e.target.value }))}
-                placeholder="Nama evaluator"
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-dark-700 mb-1.5">Realisasi Anggaran (Rp)</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+              <input
+                name="budget_actual"
+                type="number"
+                value={form.budget_actual}
+                onChange={handleChange}
+                placeholder="0"
+                className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
+          </div>
+          <div className="mt-4">
             <FormTextarea
-              label="Komentar"
-              name="comment"
-              value={form.comment}
-              onChange={(e) => setForm((p) => ({ ...p, comment: e.target.value }))}
-              placeholder="Tulis komentar evaluasi..."
+              label="Kepatuhan Rundown"
+              name="rundown_compliance"
+              value={form.rundown_compliance}
+              onChange={handleChange}
+              placeholder="Bagaimana pelaksanaan rundown berjalan? Apakah sesuai jadwal?"
+              rows={3}
+            />
+          </div>
+        </Card>
+
+        {/* Masalah & Dokumentasi */}
+        <Card>
+          <h3 className="text-lg font-semibold text-dark-900 mb-4">Masalah & Dokumentasi</h3>
+          <FormTextarea
+            label="Masalah yang Dihadapi"
+            name="issues_encountered"
+            value={form.issues_encountered}
+            onChange={handleChange}
+            placeholder="Jelaskan masalah-masalah yang terjadi selama pelaksanaan event"
+            rows={4}
+          />
+          <div className="mt-4">
+            <FormTextarea
+              label="Ringkasan Umpan Balik"
+              name="feedback_summary"
+              value={form.feedback_summary}
+              onChange={handleChange}
+              placeholder="Ringkasan umpan balik dari peserta"
+              rows={3}
+            />
+          </div>
+          <div className="mt-4">
+            <FormTextarea
+              label="Catatan Dokumentasi"
+              name="documentation_notes"
+              value={form.documentation_notes}
+              onChange={handleChange}
+              placeholder="Catatan tentang dokumentasi event (foto, video, dll)"
+              rows={3}
+            />
+          </div>
+        </Card>
+
+        {/* Rekomendasi & Perbaikan */}
+        <Card>
+          <h3 className="text-lg font-semibold text-dark-900 mb-4">Rekomendasi & Perbaikan</h3>
+          <FormTextarea
+            label="Poin Perbaikan"
+            name="improvement_notes"
+            value={form.improvement_notes}
+            onChange={handleChange}
+            placeholder="Area yang perlu diperbaiki untuk event selanjutnya"
+            rows={4}
+          />
+          <div className="mt-4">
+            <FormTextarea
+              label="Rekomendasi"
+              name="recommendations"
+              value={form.recommendations}
+              onChange={handleChange}
+              placeholder="Rekomendasi untuk event mendatang"
               rows={4}
             />
-            <div className="flex items-center justify-end gap-2">
-              <Button variant="outline" type="button" onClick={() => setShowForm(false)}>
-                Batal
-              </Button>
-              <Button variant="primary" type="submit" loading={submitting}>
-                Simpan
-              </Button>
-            </div>
-          </form>
+          </div>
         </Card>
-      )}
 
-      {/* Evaluations List */}
-      {evalList.length === 0 ? (
-        <EmptyState
-          icon={Star}
-          title="Belum ada evaluasi"
-          message="Tambahkan evaluasi pertama untuk event ini."
-          action={<Button variant="primary" icon={<Plus />} onClick={() => setShowForm(true)}>Tambah Evaluasi</Button>}
-        />
-      ) : (
-        <div className="space-y-3">
-          {evalList.map((evalItem) => (
-            <Card key={evalItem.id || evalItem._id}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <StarRating value={Number(evalItem.rating) || 0} readOnly />
-                    {evalItem.category && (
-                      <span className="text-xs bg-gray-100 text-dark-600 px-2 py-0.5 rounded-full">
-                        {categoryOptions.find((c) => c.value === evalItem.category)?.label || evalItem.category}
-                      </span>
-                    )}
-                  </div>
-                  {evalItem.comment && (
-                    <p className="text-sm text-dark-700">{evalItem.comment}</p>
-                  )}
-                  <div className="flex items-center gap-3 mt-2 text-xs text-dark-400">
-                    {evalItem.evaluator && <span>Oleh: {evalItem.evaluator}</span>}
-                    <span>{formatDate(evalItem.createdAt)}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDeleteTarget(evalItem)}
-                  className="p-1.5 rounded-lg text-dark-400 hover:text-red-600 hover:bg-red-50 transition-colors shrink-0"
-                >
-                  Hapus
-                </button>
-              </div>
-            </Card>
-          ))}
+        {/* Submit */}
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="primary" type="submit" loading={submitting} icon={<Save />}>
+            {hasEval ? 'Perbarui Evaluasi' : 'Simpan Evaluasi'}
+          </Button>
         </div>
-      )}
-
-      {/* Delete Dialog */}
-      <ConfirmDialog
-        isOpen={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        title="Hapus Evaluasi"
-        message="Hapus evaluasi ini?"
-        confirmText="Hapus"
-      />
+      </form>
     </div>
   );
 }

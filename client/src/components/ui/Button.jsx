@@ -28,18 +28,22 @@ export default function Button({
   icon,
   children,
   className = '',
+  type = 'button',
   ...rest
 }) {
   const isDisabled = disabled || loading;
 
   return (
     <button
+      type={type}
       className={`inline-flex items-center justify-center font-medium rounded-lg transition-colors
         focus:outline-none focus:ring-2 focus:ring-offset-2
         ${variants[variant]} ${sizes[size]}
         ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${className}`}
       disabled={isDisabled}
+      aria-busy={loading}
+      aria-disabled={isDisabled}
       {...rest}
     >
       {loading ? (
@@ -49,6 +53,7 @@ export default function Button({
           height={iconSizes[size]}
           viewBox="0 0 24 24"
           fill="none"
+          aria-hidden="true"
         >
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path
@@ -58,7 +63,7 @@ export default function Button({
           />
         </svg>
       ) : icon ? (
-        <span className="shrink-0">{React.cloneElement(icon, { size: iconSizes[size] })}</span>
+        <span className="shrink-0" aria-hidden="true">{React.cloneElement(icon, { size: iconSizes[size] })}</span>
       ) : null}
       {children}
     </button>

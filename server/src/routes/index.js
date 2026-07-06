@@ -56,6 +56,58 @@ router.get('/my-tasks', auth, async (req, res) => {
   }
 });
 
+// Update task progress
+router.put('/my-tasks/:id/progress', auth, async (req, res) => {
+  try {
+    const task = await EventTask.findOne({ where: { id: req.params.id, pic_id: req.user.id } });
+    if (!task) return formatResponse(res, { success: false, message: 'Tugas tidak ditemukan', statusCode: 404 });
+
+    const { progress, status } = req.body;
+    const updateData = {};
+    if (progress !== undefined) updateData.progress = progress;
+    if (status) updateData.status = status;
+    if (progress === 100 || status === 'completed' || status === 'done') {
+      updateData.progress = 100;
+      updateData.status = 'completed';
+    }
+    await task.update(updateData);
+    return formatResponse(res, { data: task, message: 'Progress berhasil diperbarui' });
+  } catch (error) {
+    console.error('Update progress error:', error);
+    return formatResponse(res, { success: false, message: 'Gagal memperbarui progress', statusCode: 500 });
+  }
+});
+
+// Update task notes
+router.put('/my-tasks/:id', auth, async (req, res) => {
+  try {
+    const task = await EventTask.findOne({ where: { id: req.params.id, pic_id: req.user.id } });
+    if (!task) return formatResponse(res, { success: false, message: 'Tugas tidak ditemukan', statusCode: 404 });
+
+    const { notes } = req.body;
+    if (notes !== undefined) await task.update({ notes });
+    return formatResponse(res, { data: task, message: 'Catatan berhasil diperbarui' });
+  } catch (error) {
+    console.error('Update task error:', error);
+    return formatResponse(res, { success: false, message: 'Gagal memperbarui tugas', statusCode: 500 });
+  }
+});
+
+// Upload proof
+router.post('/my-tasks/:id/proof', auth, async (req, res) => {
+  try {
+    const task = await EventTask.findOne({ where: { id: req.params.id, pic_id: req.user.id } });
+    if (!task) return formatResponse(res, { success: false, message: 'Tugas tidak ditemukan', statusCode: 404 });
+
+    // Placeholder: in production, use multer for file upload
+    await task.update({ proof_url: 'uploaded' });
+    return formatResponse(res, { data: task, message: 'Bukti berhasil diupload' });
+  } catch (error) {
+    console.error('Upload proof error:', error);
+    return formatResponse(res, { success: false, message: 'Gagal upload bukti', statusCode: 500 });
+  }
+});
+
 // Health check
 router.get('/health', (req, res) => {
   res.json({ success: true, message: 'Daniswara Event Planner API is running', timestamp: new Date().toISOString() });

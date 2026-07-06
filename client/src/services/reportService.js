@@ -1,6 +1,9 @@
 import api from './api';
 
 const reportService = {
+  getEvents: (params) =>
+    api.get('/reports/events', { params }),
+
   listEvents: () =>
     api.get('/reports/events'),
 

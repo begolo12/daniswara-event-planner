@@ -193,10 +193,10 @@ function TaskCard({ task, updating, onProgressChange, onComplete, onUploadProof,
             </h3>
           </div>
 
-          {task.eventName && (
+          {(task.Event?.name || task.event_name || task.eventName) && (
             <div className="flex items-center gap-1.5 ml-6 mb-1">
               <LinkIcon size={12} className="text-dark-400" />
-              <span className="text-xs text-dark-500 truncate">{task.eventName}</span>
+              <span className="text-xs text-dark-500 truncate">{task.Event?.name || task.event_name || task.eventName}</span>
             </div>
           )}
 
@@ -256,7 +256,7 @@ function TaskCard({ task, updating, onProgressChange, onComplete, onUploadProof,
         >
           Upload Bukti
         </Button>
-        {task.proof && (
+        {(task.proof_url || task.proof_file || task.proof) && (
           <span className="text-xs text-green-600 flex items-center gap-1">
             <FileText size={12} /> Bukti terupload
           </span>

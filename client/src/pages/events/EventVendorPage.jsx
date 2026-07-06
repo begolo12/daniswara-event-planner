@@ -16,14 +16,15 @@ import StatusBadge from '../../components/ui/StatusBadge';
 import { formatCurrency } from '../../utils/formatters';
 
 const initialVendor = {
-  name: '',
+  vendor_name: '',
   category: '',
-  contactEmail: '',
-  contactPhone: '',
-  contactPerson: '',
-  cost: '',
+  contact_person: '',
+  phone: '',
+  email: '',
+  estimated_cost: '',
+  actual_cost: '',
+  performance_notes: '',
   status: 'pending',
-  notes: '',
 };
 
 const vendorStatusOptions = [
@@ -66,14 +67,15 @@ export default function EventVendorPage() {
   const openEdit = (v) => {
     setEditingVendor(v);
     setForm({
-      name: v.name || '',
+      vendor_name: v.vendor_name || '',
       category: v.category || '',
-      contactEmail: v.contactEmail || v.contact?.email || '',
-      contactPhone: v.contactPhone || v.contact?.phone || '',
-      contactPerson: v.contactPerson || v.contact?.person || '',
-      cost: v.cost || '',
+      contact_person: v.contact_person || '',
+      phone: v.phone || '',
+      email: v.email || '',
+      estimated_cost: v.estimated_cost || '',
+      actual_cost: v.actual_cost || '',
+      performance_notes: v.performance_notes || '',
       status: v.status || 'pending',
-      notes: v.notes || '',
     });
     setShowAddModal(true);
   };
@@ -85,26 +87,25 @@ export default function EventVendorPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name.trim()) {
+    if (!form.vendor_name.trim()) {
       toast.error('Nama vendor wajib diisi');
       return;
     }
     setSubmitting(true);
     try {
       const payload = {
-        name: form.name,
+        vendor_name: form.vendor_name,
         category: form.category,
-        contact: {
-          email: form.contactEmail,
-          phone: form.contactPhone,
-          person: form.contactPerson,
-        },
-        cost: Number(form.cost) || 0,
+        contact_person: form.contact_person,
+        phone: form.phone,
+        email: form.email,
+        estimated_cost: Number(form.estimated_cost) || 0,
+        actual_cost: Number(form.actual_cost) || 0,
+        performance_notes: form.performance_notes,
         status: form.status,
-        notes: form.notes,
       };
       if (editingVendor) {
-        await vendors.update(eventId, editingVendor.id || editingVendor._id, payload);
+        await vendors.update(eventId, editingVendor.id, payload);
         toast.success('Vendor berhasil diperbarui');
       } else {
         await vendors.create(eventId, payload);
@@ -122,7 +123,7 @@ export default function EventVendorPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await vendors.delete(eventId, deleteTarget.id || deleteTarget._id);
+      await vendors.delete(eventId, deleteTarget.id);
       toast.success('Vendor berhasil dihapus');
       setDeleteTarget(null);
       fetchVendors();
@@ -160,10 +161,10 @@ export default function EventVendorPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {vendorList.map((v) => (
-            <Card key={v.id || v._id} hover>
+            <Card key={v.id} hover>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-dark-900 truncate">{v.name}</h3>
+                  <h3 className="font-semibold text-dark-900 truncate">{v.vendor_name}</h3>
                   {v.category && (
                     <span className="text-xs bg-gray-100 text-dark-600 px-2 py-0.5 rounded-full mt-1 inline-block">
                       {v.category}
@@ -174,28 +175,41 @@ export default function EventVendorPage() {
               </div>
 
               <div className="space-y-1.5 mb-4">
-                {v.contact?.email && (
+                {v.email && (
                   <div className="flex items-center gap-2 text-sm text-dark-600">
                     <Mail size={14} className="text-dark-400 shrink-0" />
-                    <span className="truncate">{v.contact.email}</span>
+                    <span className="truncate">{v.email}</span>
                   </div>
                 )}
-                {v.contact?.phone && (
+                {v.phone && (
                   <div className="flex items-center gap-2 text-sm text-dark-600">
                     <Phone size={14} className="text-dark-400 shrink-0" />
-                    <span>{v.contact.phone}</span>
+                    <span>{v.phone}</span>
                   </div>
                 )}
-                {v.contact?.person && (
+                {v.contact_person && (
                   <div className="flex items-center gap-2 text-sm text-dark-600">
                     <User size={14} className="text-dark-400 shrink-0" />
-                    <span>{v.contact.person}</span>
+                    <span>{v.contact_person}</span>
                   </div>
                 )}
               </div>
 
-              {v.cost > 0 && (
-                <p className="text-sm font-medium text-dark-900 mb-3">{formatCurrency(v.cost)}</p>
+              <div className="space-y-1 mb-3">
+                {v.estimated_cost > 0 && (
+                  <p className="text-sm text-dark-600">
+                    Estimasi: <span className="font-medium text-dark-900">{formatCurrency(v.estimated_cost)}</span>
+                  </p>
+                )}
+                {v.actual_cost > 0 && (
+                  <p className="text-sm text-dark-600">
+                    Aktual: <span className="font-medium text-dark-900">{formatCurrency(v.actual_cost)}</span>
+                  </p>
+                )}
+              </div>
+
+              {v.performance_notes && (
+                <p className="text-xs text-dark-500 mb-3 line-clamp-2">{v.performance_notes}</p>
               )}
 
               <div className="flex items-center justify-end gap-1 pt-2 border-t border-gray-100">
@@ -226,27 +240,45 @@ export default function EventVendorPage() {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormInput label="Nama Vendor" name="name" value={form.name} onChange={handleChange} required placeholder="Nama vendor" />
+          <FormInput label="Nama Vendor" name="vendor_name" value={form.vendor_name} onChange={handleChange} required placeholder="Nama vendor" />
           <FormInput label="Kategori" name="category" value={form.category} onChange={handleChange} placeholder="Catering, Sound, dll" />
-          <FormInput label="Email" name="contactEmail" type="email" value={form.contactEmail} onChange={handleChange} placeholder="Email vendor" icon={Mail} />
-          <FormInput label="Telepon" name="contactPhone" value={form.contactPhone} onChange={handleChange} placeholder="Nomor telepon" icon={Phone} />
-          <FormInput label="PIC Vendor" name="contactPerson" value={form.contactPerson} onChange={handleChange} placeholder="Nama kontak" icon={User} />
-          <div>
-            <label className="block text-sm font-medium text-dark-700 mb-1.5">Biaya (Rp)</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
-              <input
-                name="cost"
-                type="number"
-                value={form.cost}
-                onChange={handleChange}
-                placeholder="0"
-                className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-              />
+          <FormInput label="PIC Vendor" name="contact_person" value={form.contact_person} onChange={handleChange} placeholder="Nama kontak" icon={User} />
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Telepon" name="phone" value={form.phone} onChange={handleChange} placeholder="Nomor telepon" icon={Phone} />
+            <FormInput label="Email" name="email" type="email" value={form.email} onChange={handleChange} placeholder="Email vendor" icon={Mail} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Biaya Estimasi (Rp)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+                <input
+                  name="estimated_cost"
+                  type="number"
+                  value={form.estimated_cost}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Biaya Aktual (Rp)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+                <input
+                  name="actual_cost"
+                  type="number"
+                  value={form.actual_cost}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
             </div>
           </div>
           <FormSelect label="Status" name="status" value={form.status} onChange={handleChange} options={vendorStatusOptions} />
-          <FormTextarea label="Catatan" name="notes" value={form.notes} onChange={handleChange} placeholder="Catatan tentang vendor" rows={2} />
+          <FormTextarea label="Catatan Kinerja" name="performance_notes" value={form.performance_notes} onChange={handleChange} placeholder="Catatan tentang kinerja vendor" rows={2} />
         </form>
       </Modal>
 
@@ -256,7 +288,7 @@ export default function EventVendorPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Hapus Vendor"
-        message={`Hapus vendor "${deleteTarget?.name}" dari event?`}
+        message={`Hapus vendor "${deleteTarget?.vendor_name}" dari event?`}
         confirmText="Hapus"
       />
     </div>

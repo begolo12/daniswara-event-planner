@@ -3,11 +3,13 @@ import {
   Eye,
   Download,
   FileBarChart,
+  FileText,
   TrendingUp,
   TrendingDown,
   Minus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { saveAs } from 'file-saver';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
@@ -39,7 +41,7 @@ export default function ReportsPage() {
       setLoading(true);
       try {
         const [eventsRes, budgetRes] = await Promise.allSettled([
-          reportService.listEvents(),
+          reportService.getEvents(),
           reportService.getBudgetReport(),
         ]);
         if (eventsRes.status === 'fulfilled') setEvents(eventsRes.value.data?.data || []);
@@ -76,12 +78,22 @@ export default function ReportsPage() {
             try {
               await reportService.generateReport(eventId);
               toast.success('Laporan berhasil digenerate');
-              const res = await reportService.listEvents();
+              const res = await reportService.getEvents();
               setEvents(res.data?.data || []);
             } catch {
               toast.error('Gagal generate laporan');
             } finally {
               setGenerating(false);
+            }
+          }}
+          onExportDocx={async (eventId, eventName) => {
+            try {
+              const res = await reportService.exportEventDocx(eventId);
+              const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+              saveAs(blob, `laporan-${(eventName || 'event').replace(/\s+/g, '-')}.docx`);
+              toast.success('DOCX berhasil didownload');
+            } catch {
+              toast.error('Gagal export DOCX');
             }
           }}
           onViewReport={async (event) => {
@@ -130,7 +142,7 @@ export default function ReportsPage() {
   );
 }
 
-function EventsTab({ events, onGenerate, onViewReport, generating }) {
+function EventsTab({ events, onGenerate, onExportDocx, onViewReport, generating }) {
   const columns = [
     { key: 'no', label: 'No', render: (_, __, idx) => idx + 1 },
     { key: 'name', label: 'Event' },
@@ -163,6 +175,13 @@ function EventsTab({ events, onGenerate, onViewReport, generating }) {
             disabled={generating}
           >
             <FileBarChart size={15} />
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onExportDocx(row.id, row.name); }}
+            className="p-1.5 rounded-lg text-dark-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            title="Export DOCX"
+          >
+            <FileText size={15} />
           </button>
         </div>
       ),

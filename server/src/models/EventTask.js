@@ -22,7 +22,7 @@ const EventTask = sequelize.define('EventTask', {
   },
   pic_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: { model: 'users', key: 'id' },
   },
   deadline: {
@@ -41,6 +41,10 @@ const EventTask = sequelize.define('EventTask', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     validate: { min: 0, max: 100 },
+  },
+  sort_order: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
   },
   notes: {
     type: DataTypes.TEXT,

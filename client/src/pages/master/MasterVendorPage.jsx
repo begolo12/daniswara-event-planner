@@ -48,7 +48,13 @@ export default function MasterVendorPage() {
     setLoading(true);
     try {
       const res = await masterService.vendors.list();
-      setItems(res.data?.data || []);
+      const raw = res.data?.data || [];
+      setItems(Array.isArray(raw) ? raw.map((v) => ({
+        ...v,
+        contactName: v.contact_name || v.contactName || '',
+        contactEmail: v.contact_email || v.contactEmail || '',
+        contactPhone: v.contact_phone || v.contactPhone || '',
+      })) : []);
     } catch {
       toast.error('Gagal memuat data');
     } finally {
@@ -62,7 +68,7 @@ export default function MasterVendorPage() {
     let result = items;
     if (search) {
       const s = search.toLowerCase();
-      result = result.filter((v) => v.name?.toLowerCase().includes(s) || v.contactName?.toLowerCase().includes(s));
+      result = result.filter((v) => v.name?.toLowerCase().includes(s) || (v.contact_name || v.contactName)?.toLowerCase().includes(s));
     }
     if (categoryFilter) {
       result = result.filter((v) => v.category === categoryFilter);
@@ -80,8 +86,8 @@ export default function MasterVendorPage() {
     setEditingItem(item);
     setForm({
       name: item.name || '', category: item.category || '',
-      contactName: item.contactName || '', contactEmail: item.contactEmail || '',
-      contactPhone: item.contactPhone || '', address: item.address || '',
+      contactName: item.contact_name || item.contactName || '', contactEmail: item.contact_email || item.contactEmail || '',
+      contactPhone: item.contact_phone || item.contactPhone || '', address: item.address || '',
       notes: item.notes || '',
     });
     setShowModal(true);

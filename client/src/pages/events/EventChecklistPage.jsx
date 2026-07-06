@@ -4,7 +4,7 @@ import { Plus, Edit, Trash2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { checklists } from '../../services/eventSubService';
 import { CHECKLIST_CATEGORIES, PRIORITIES } from '../../utils/constants';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatCurrency } from '../../utils/formatters';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Modal from '../../components/ui/Modal';
@@ -14,19 +14,26 @@ import FormTextarea from '../../components/ui/FormTextarea';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EmptyState from '../../components/ui/EmptyState';
-import StatusBadge from '../../components/ui/StatusBadge';
 
 const initialItem = {
   category: '',
-  title: '',
-  description: '',
-  assignee: '',
-  dueDate: '',
+  item_name: '',
+  quantity: 1,
   priority: 'medium',
+  pic_id: '',
+  deadline: '',
+  estimated_cost: '',
+  status: 'not_started',
+  notes: '',
 };
 
 const categoryOptions = Object.entries(CHECKLIST_CATEGORIES).map(([k, v]) => ({ value: k, label: v }));
 const priorityOptions = Object.entries(PRIORITIES).map(([k, v]) => ({ value: k, label: v.label }));
+const statusOptions = [
+  { value: 'not_started', label: 'Belum Mulai' },
+  { value: 'in_progress', label: 'Dikerjakan' },
+  { value: 'done', label: 'Selesai' },
+];
 
 export default function EventChecklistPage() {
   const { id: eventId } = useParams();
@@ -53,7 +60,7 @@ export default function EventChecklistPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const completedCount = items.filter((i) => i.status === 'completed' || i.completed).length;
+  const completedCount = items.filter((i) => i.status === 'done').length;
   const totalCount = items.length;
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
@@ -67,11 +74,14 @@ export default function EventChecklistPage() {
     setEditingItem(item);
     setForm({
       category: item.category || '',
-      title: item.title || '',
-      description: item.description || '',
-      assignee: item.assignee || '',
-      dueDate: item.dueDate ? item.dueDate.slice(0, 10) : '',
+      item_name: item.item_name || '',
+      quantity: item.quantity || 1,
       priority: item.priority || 'medium',
+      pic_id: item.pic_id || '',
+      deadline: item.deadline ? item.deadline.slice(0, 10) : '',
+      estimated_cost: item.estimated_cost || '',
+      status: item.status || 'not_started',
+      notes: item.notes || '',
     });
     setShowAddModal(true);
   };
@@ -83,17 +93,28 @@ export default function EventChecklistPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) {
-      toast.error('Judul wajib diisi');
+    if (!form.item_name.trim()) {
+      toast.error('Nama item wajib diisi');
       return;
     }
     setSubmitting(true);
     try {
+      const payload = {
+        category: form.category,
+        item_name: form.item_name,
+        quantity: Number(form.quantity) || 1,
+        priority: form.priority,
+        pic_id: form.pic_id ? Number(form.pic_id) : null,
+        deadline: form.deadline || null,
+        estimated_cost: Number(form.estimated_cost) || 0,
+        status: form.status,
+        notes: form.notes,
+      };
       if (editingItem) {
-        await checklists.update(eventId, editingItem.id || editingItem._id, form);
+        await checklists.update(eventId, editingItem.id, payload);
         toast.success('Checklist berhasil diperbarui');
       } else {
-        await checklists.create(eventId, form);
+        await checklists.create(eventId, payload);
         toast.success('Checklist berhasil ditambahkan');
       }
       setShowAddModal(false);
@@ -107,7 +128,7 @@ export default function EventChecklistPage() {
 
   const handleToggleStatus = async (item) => {
     try {
-      await checklists.toggleStatus(eventId, item.id || item._id);
+      await checklists.toggleStatus(eventId, item.id);
       fetchItems();
     } catch {
       toast.error('Gagal mengubah status');
@@ -117,7 +138,7 @@ export default function EventChecklistPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await checklists.delete(eventId, deleteTarget.id || deleteTarget._id);
+      await checklists.delete(eventId, deleteTarget.id);
       toast.success('Checklist berhasil dihapus');
       setDeleteTarget(null);
       fetchItems();
@@ -182,10 +203,10 @@ export default function EventChecklistPage() {
               </h3>
               <div className="space-y-2">
                 {catItems.map((item) => {
-                  const done = item.status === 'completed' || item.completed;
+                  const done = item.status === 'done';
                   return (
                     <Card
-                      key={item.id || item._id}
+                      key={item.id}
                       padding="p-3"
                       className={`flex items-center gap-3 ${done ? 'bg-green-50/50' : ''}`}
                     >
@@ -194,24 +215,33 @@ export default function EventChecklistPage() {
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors ${
                           done
                             ? 'bg-green-500 border-green-500 text-white'
-                            : 'border-gray-300 hover:border-brand-400'
+                            : item.status === 'in_progress'
+                              ? 'bg-blue-500 border-blue-500 text-white'
+                              : 'border-gray-300 hover:border-brand-400'
                         }`}
                       >
                         {done && <Check size={12} />}
+                        {item.status === 'in_progress' && <span className="text-[8px]">⋯</span>}
                       </button>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${done ? 'line-through text-dark-400' : 'text-dark-900'}`}>
-                          {item.title}
-                        </p>
-                        {item.description && (
-                          <p className="text-xs text-dark-400 mt-0.5">{item.description}</p>
+                        <div className="flex items-center gap-2">
+                          <p className={`text-sm font-medium ${done ? 'line-through text-dark-400' : 'text-dark-900'}`}>
+                            {item.item_name}
+                          </p>
+                          {item.quantity > 1 && (
+                            <span className="text-xs text-dark-400">×{item.quantity}</span>
+                          )}
+                        </div>
+                        {item.notes && (
+                          <p className="text-xs text-dark-400 mt-0.5">{item.notes}</p>
                         )}
                         <div className="flex items-center gap-3 mt-1 text-xs text-dark-400">
-                          {item.assignee && <span>PIC: {item.assignee}</span>}
-                          {item.dueDate && <span>Jatuh tempo: {formatDate(item.dueDate)}</span>}
+                          {item.pic_id && <span>PIC ID: {item.pic_id}</span>}
+                          {item.deadline && <span>Jatuh tempo: {formatDate(item.deadline)}</span>}
+                          {item.estimated_cost > 0 && <span>Estimasi: {formatCurrency(item.estimated_cost)}</span>}
                           {item.priority && (
                             <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                              item.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                              item.priority === 'critical' ? 'bg-red-100 text-red-700' :
                               item.priority === 'high' ? 'bg-orange-100 text-orange-700' :
                               item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                               'bg-gray-100 text-gray-700'
@@ -254,11 +284,31 @@ export default function EventChecklistPage() {
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormSelect label="Kategori" name="category" value={form.category} onChange={handleChange} options={categoryOptions} placeholder="Pilih kategori" />
-          <FormInput label="Judul" name="title" value={form.title} onChange={handleChange} required placeholder="Judul item" />
-          <FormTextarea label="Deskripsi" name="description" value={form.description} onChange={handleChange} placeholder="Deskripsi singkat" rows={2} />
-          <FormInput label="PIC" name="assignee" value={form.assignee} onChange={handleChange} placeholder="Penanggung jawab" />
-          <FormInput label="Jatuh Tempo" name="dueDate" type="date" value={form.dueDate} onChange={handleChange} />
-          <FormSelect label="Prioritas" name="priority" value={form.priority} onChange={handleChange} options={priorityOptions} />
+          <FormInput label="Nama Item" name="item_name" value={form.item_name} onChange={handleChange} required placeholder="Nama item checklist" />
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Jumlah" name="quantity" type="number" value={form.quantity} onChange={handleChange} min="1" />
+            <FormSelect label="Prioritas" name="priority" value={form.priority} onChange={handleChange} options={priorityOptions} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="PIC ID" name="pic_id" type="number" value={form.pic_id} onChange={handleChange} placeholder="ID penanggung jawab" />
+            <FormInput label="Jatuh Tempo" name="deadline" type="date" value={form.deadline} onChange={handleChange} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-dark-700 mb-1.5">Estimasi Biaya (Rp)</label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+              <input
+                name="estimated_cost"
+                type="number"
+                value={form.estimated_cost}
+                onChange={handleChange}
+                placeholder="0"
+                className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+              />
+            </div>
+          </div>
+          <FormSelect label="Status" name="status" value={form.status} onChange={handleChange} options={statusOptions} />
+          <FormTextarea label="Catatan" name="notes" value={form.notes} onChange={handleChange} placeholder="Catatan tambahan" rows={2} />
         </form>
       </Modal>
 
@@ -268,7 +318,7 @@ export default function EventChecklistPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Hapus Checklist"
-        message={`Hapus item "${deleteTarget?.title}" dari checklist?`}
+        message={`Hapus item "${deleteTarget?.item_name}" dari checklist?`}
         confirmText="Hapus"
       />
     </div>

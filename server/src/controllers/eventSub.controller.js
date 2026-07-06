@@ -115,16 +115,27 @@ export async function selectTheme(req, res) {
 export function reorder(Model) {
   return async (req, res) => {
     try {
-      const { items } = req.body; // [{ id, sort_order }]
-      if (!Array.isArray(items)) {
-        return formatResponse(res, { success: false, message: 'Format data tidak valid', statusCode: 400 });
-      }
+      // Accept both { items: [{ id, sort_order }] } and { orderedIds: [id1, id2, ...] }
+      const { items, orderedIds } = req.body;
 
-      for (const item of items) {
-        await Model.update(
-          { sort_order: item.sort_order },
-          { where: { id: item.id, event_id: req.params.eventId } }
-        );
+      if (Array.isArray(orderedIds)) {
+        // orderedIds format: just an array of IDs in order
+        for (let i = 0; i < orderedIds.length; i++) {
+          await Model.update(
+            { sort_order: i },
+            { where: { id: orderedIds[i], event_id: req.params.eventId } }
+          );
+        }
+      } else if (Array.isArray(items)) {
+        // items format: [{ id, sort_order }]
+        for (const item of items) {
+          await Model.update(
+            { sort_order: item.sort_order },
+            { where: { id: item.id, event_id: req.params.eventId } }
+          );
+        }
+      } else {
+        return formatResponse(res, { success: false, message: 'Format data tidak valid', statusCode: 400 });
       }
 
       return formatResponse(res, { message: 'Urutan berhasil diperbarui' });

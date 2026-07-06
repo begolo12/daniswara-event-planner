@@ -22,7 +22,7 @@ export default class AIService {
 
     const apiKey = settings.api_key_encrypted ? decrypt(settings.api_key_encrypted) : '';
     this.client = new OpenAI({
-      apiKey: apiKey || 'sk-placeholder',
+      apiKey: apiKey || '',
       baseURL: settings.base_url || 'https://api.openai.com/v1',
     });
     return this.client;
@@ -65,7 +65,6 @@ export default class AIService {
   }
 
   _parseJSON(response) {
-    // Try to extract JSON from the response (handles markdown code blocks)
     let text = response.trim();
     const jsonMatch = text.match(/```json\s*([\s\S]*?)```/);
     if (jsonMatch) text = jsonMatch[1].trim();
@@ -84,8 +83,10 @@ export default class AIService {
     }
   }
 
-  async generate(eventData, outputs, userId, eventId = null) {
+  async generate(eventData, outputs, userId, eventId = null, mode = "full_proposal") {
     const systemPrompt = buildSystemPrompt();
+    eventData.mode = mode;
+    eventData.mode = mode;
     const userPrompt = buildEventGenerationPrompt(eventData, outputs);
 
     const result = await this._callAI(systemPrompt, userPrompt);
@@ -136,7 +137,6 @@ export default class AIService {
 
     const result = await this._callAI(systemPrompt, userPrompt);
 
-    // Update test status
     const settings = await this._loadSettings();
     if (settings) {
       await settings.update({ last_test_at: new Date(), last_test_status: 'success' });

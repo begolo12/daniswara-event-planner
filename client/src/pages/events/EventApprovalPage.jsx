@@ -4,7 +4,6 @@ import { Send, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { approvals } from '../../services/eventSubService';
 import eventService from '../../services/eventService';
-import { APPROVAL_STATUSES } from '../../utils/constants';
 import { formatDateTime } from '../../utils/formatters';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -152,18 +151,26 @@ export default function EventApprovalPage() {
       ) : (
         <div className="space-y-3">
           {approvalList.map((approval) => (
-            <Card key={approval.id || approval._id}>
+            <Card key={approval.id}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <StatusBadge status={approval.status || 'pending'} />
+                    <StatusBadge status={approval.status} />
                     <span className="text-xs text-dark-400">
-                      {formatDateTime(approval.createdAt)}
+                      {formatDateTime(approval.created_at || approval.createdAt)}
                     </span>
                   </div>
                   {approval.reviewer && (
                     <p className="text-sm text-dark-700">
-                      <span className="font-medium">{approval.reviewer}</span>
+                      <span className="font-medium">
+                        {approval.reviewer.name || approval.reviewer.username || `User #${approval.reviewer_id}`}
+                      </span>
+                      {' '}memberikan keputusan
+                    </p>
+                  )}
+                  {!approval.reviewer && approval.reviewer_id && (
+                    <p className="text-sm text-dark-700">
+                      <span className="font-medium">User #{approval.reviewer_id}</span>
                       {' '}memberikan keputusan
                     </p>
                   )}

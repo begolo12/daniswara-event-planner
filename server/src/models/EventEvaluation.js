@@ -12,6 +12,11 @@ const EventEvaluation = sequelize.define('EventEvaluation', {
     allowNull: false,
     references: { model: 'events', key: 'id' },
   },
+  rating: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: { min: 1, max: 10 },
+  },
   actual_participants: {
     type: DataTypes.INTEGER,
     allowNull: true,

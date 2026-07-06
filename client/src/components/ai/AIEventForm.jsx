@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import Button from '../ui/Button';
 
 const eventTypes = [
@@ -26,17 +26,39 @@ const toneOptions = [
   { value: 'festive', label: 'Festive' },
 ];
 
+/**
+ * Output options for the comprehensive AI proposal.
+ * Each option maps to a section in the AI response.
+ */
 const outputOptions = [
-  { key: 'brief', label: 'Brief Event' },
-  { key: 'themes', label: 'Tema & Konsep' },
-  { key: 'timeline', label: 'Timeline' },
-  { key: 'rundown', label: 'Rundown' },
-  { key: 'checklist', label: 'Checklist' },
-  { key: 'budget', label: 'Anggaran' },
-  { key: 'tasks', label: 'Tugas' },
-  { key: 'risks', label: 'Rencana Risiko' },
-  { key: 'documents', label: 'Dokumen' },
-  { key: 'evaluation', label: 'Evaluasi' },
+  { key: 'event_identity', label: 'Identitas Event', category: 'core' },
+  { key: 'idea_options', label: 'Ide Konsep (35 Pilihan)', category: 'core' },
+  { key: 'recommended_concept', label: 'Konsep Rekomendasi', category: 'core' },
+  { key: 'background', label: 'Latar Belakang', category: 'content' },
+  { key: 'objectives', label: 'Tujuan & Objektif', category: 'content' },
+  { key: 'concept', label: 'Konsep Detail', category: 'content' },
+  { key: 'theme_philosophy', label: 'Tema & Filosofi', category: 'design' },
+  { key: 'participant_targets', label: 'Target Peserta', category: 'content' },
+  { key: 'benefits', label: 'Manfaat Event', category: 'content' },
+  { key: 'key_messages', label: 'Pesan Kunci', category: 'content' },
+  { key: 'committee', label: 'Susunan Panitia', category: 'planning' },
+  { key: 'timeline', label: 'Timeline Persiapan', category: 'planning' },
+  { key: 'rundown', label: 'Rundown Acara', category: 'planning' },
+  { key: 'equipment_needs', label: 'Kebutuhan Peralatan', category: 'planning' },
+  { key: 'budget', label: 'Rincian Anggaran', category: 'planning' },
+  { key: 'budget_summary', label: 'Ringkasan Budget', category: 'planning' },
+  { key: 'materials_content', label: 'Materi & Konten', category: 'content' },
+  { key: 'post_event_outputs', label: 'Output Pasca Event', category: 'planning' },
+  { key: 'risks', label: 'Risiko & Mitigasi', category: 'planning' },
+  { key: 'checklists', label: 'Checklist Persiapan', category: 'planning' },
+  { key: 'final_recommendation', label: 'Rekomendasi Akhir', category: 'core' },
+];
+
+const outputCategories = [
+  { key: 'core', label: 'Inti Proposal' },
+  { key: 'content', label: 'Konten & Materi' },
+  { key: 'design', label: 'Desain & Tema' },
+  { key: 'planning', label: 'Perencanaan & Eksekusi' },
 ];
 
 const initialForm = {
@@ -116,6 +138,9 @@ export default function AIEventForm({ onSubmit, loading = false, initialValues }
     return initial;
   });
   const [errors, setErrors] = useState({});
+  const [expandedCategories, setExpandedCategories] = useState(
+    outputCategories.reduce((acc, cat) => ({ ...acc, [cat.key]: true }), {})
+  );
 
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -127,6 +152,27 @@ export default function AIEventForm({ onSubmit, loading = false, initialValues }
   const handleOutputToggle = (key) => {
     setOutputs((prev) => ({ ...prev, [key]: !prev[key] }));
   };
+
+  const handleToggleCategory = (categoryKey) => {
+    const categoryOptions = outputOptions.filter(opt => opt.category === categoryKey);
+    const allSelected = categoryOptions.every(opt => outputs[opt.key]);
+    setOutputs(prev => {
+      const next = { ...prev };
+      categoryOptions.forEach(opt => { next[opt.key] = !allSelected; });
+      return next;
+    });
+  };
+
+  const handleToggleAll = () => {
+    const allSelected = outputOptions.every(opt => outputs[opt.key]);
+    setOutputs(prev => {
+      const next = {};
+      outputOptions.forEach(opt => { next[opt.key] = !allSelected; });
+      return next;
+    });
+  };
+
+  const selectedCount = Object.values(outputs).filter(Boolean).length;
 
   const validate = () => {
     const newErrors = {};
@@ -298,30 +344,81 @@ export default function AIEventForm({ onSubmit, loading = false, initialValues }
         />
       </div>
 
-      {/* Output Selection */}
+      {/* Output Selection - Comprehensive AI Proposal */}
       <div className="bg-white rounded-xl border border-gray-100 p-6 space-y-4">
-        <h3 className="font-semibold text-dark-900">Output yang Ingin Dibuat</h3>
-        <p className="text-sm text-dark-500">Pilih dokumen/rencana yang ingin dibuat oleh AI</p>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-          {outputOptions.map((opt) => (
-            <label
-              key={opt.key}
-              className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors
-                ${outputs[opt.key]
-                  ? 'border-brand-400 bg-brand-50 text-brand-700'
-                  : 'border-gray-200 hover:border-gray-300 text-dark-600'}`}
-            >
-              <input
-                type="checkbox"
-                checked={outputs[opt.key]}
-                onChange={() => handleOutputToggle(opt.key)}
-                className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
-              />
-              <span className="text-sm font-medium">{opt.label}</span>
-            </label>
-          ))}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-dark-900">Output yang Ingin Dibuat</h3>
+            <p className="text-sm text-dark-500">Pilih bagian proposal yang ingin dibuat oleh AI ({selectedCount}/{outputOptions.length} dipilih)</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleAll}
+            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+          >
+            {outputOptions.every(opt => outputs[opt.key]) ? 'Batal Pilih Semua' : 'Pilih Semua'}
+          </button>
         </div>
+
+        {outputCategories.map((cat) => {
+          const catOptions = outputOptions.filter(opt => opt.category === cat.key);
+          const allSelected = catOptions.every(opt => outputs[opt.key]);
+          const someSelected = catOptions.some(opt => outputs[opt.key]);
+          const isExpanded = expandedCategories[cat.key];
+
+          return (
+            <div key={cat.key} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div
+                className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => setExpandedCategories(prev => ({ ...prev, [cat.key]: !prev[cat.key] }))}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-5 h-5 rounded flex items-center justify-center border transition-colors cursor-pointer ${
+                      allSelected
+                        ? 'bg-brand-600 border-brand-600 text-white'
+                        : someSelected
+                        ? 'bg-brand-200 border-brand-400 text-brand-700'
+                        : 'border-gray-300 bg-white'
+                    }`}
+                    onClick={(e) => { e.stopPropagation(); handleToggleCategory(cat.key); }}
+                  >
+                    {allSelected && <span className="text-xs">✓</span>}
+                    {someSelected && !allSelected && <span className="text-xs">−</span>}
+                  </div>
+                  <span className="text-sm font-semibold text-dark-700">{cat.label}</span>
+                  <span className="text-xs text-dark-400">
+                    {catOptions.filter(opt => outputs[opt.key]).length}/{catOptions.length}
+                  </span>
+                </div>
+                {isExpanded ? <ChevronDown size={16} className="text-dark-400" /> : <ChevronRight size={16} className="text-dark-400" />}
+              </div>
+
+              {isExpanded && (
+                <div className="p-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {catOptions.map((opt) => (
+                    <label
+                      key={opt.key}
+                      className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer transition-colors text-sm ${
+                        outputs[opt.key]
+                          ? 'border-brand-400 bg-brand-50 text-brand-700'
+                          : 'border-gray-200 hover:border-gray-300 text-dark-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={outputs[opt.key]}
+                        onChange={() => handleOutputToggle(opt.key)}
+                        className="w-4 h-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      />
+                      <span className="font-medium">{opt.label}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Submit */}

@@ -1,80 +1,146 @@
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import RequireAuth from './components/RequireAuth';
 import RequireRole from './components/RequireRole';
 import Layout from './components/layout/Layout';
-import LoginPage from './pages/auth/LoginPage';
-import DashboardPage from './pages/dashboard/DashboardPage';
-import EventListPage from './pages/events/EventListPage';
-import EventCreatePage from './pages/events/EventCreatePage';
-import EventCreateAIPage from './pages/events/EventCreateAIPage';
-import EventDetailPage from './pages/events/EventDetailPage';
-import EventTimelinePage from './pages/events/EventTimelinePage';
-import EventRundownPage from './pages/events/EventRundownPage';
-import EventChecklistPage from './pages/events/EventChecklistPage';
-import EventTaskPage from './pages/events/EventTaskPage';
-import EventBudgetPage from './pages/events/EventBudgetPage';
-import EventVendorPage from './pages/events/EventVendorPage';
-import EventDocumentPage from './pages/events/EventDocumentPage';
-import EventApprovalPage from './pages/events/EventApprovalPage';
-import EventEvaluationPage from './pages/events/EventEvaluationPage';
-import EventReportPage from './pages/events/EventReportPage';
-import AIGeneratorCenterPage from './pages/ai/AIGeneratorCenterPage';
-import CalendarPage from './pages/calendar/CalendarPage';
-import MasterEventTypePage from './pages/master/MasterEventTypePage';
-import MasterVendorPage from './pages/master/MasterVendorPage';
-import MasterVenuePage from './pages/master/MasterVenuePage';
-import MasterEquipmentPage from './pages/master/MasterEquipmentPage';
-import AISettingsPage from './pages/settings/AISettingsPage';
-import UserManagementPage from './pages/settings/UserManagementPage';
-import MyTasksPage from './pages/my-tasks/MyTasksPage';
-import ReportsPage from './pages/reports/ReportsPage';
+import LoadingSpinner from './components/ui/LoadingSpinner';
+
+// Lazy-loaded page components
+const LoginPage = lazy(() => import('./pages/auth/LoginPage'));
+const DashboardPage = lazy(() => import('./pages/dashboard/DashboardPage'));
+const EventListPage = lazy(() => import('./pages/events/EventListPage'));
+const EventCreatePage = lazy(() => import('./pages/events/EventCreatePage'));
+const EventEditPage = lazy(() => import('./pages/events/EventEditPage'));
+const EventCreateAIPage = lazy(() => import('./pages/events/EventCreateAIPage'));
+const EventDetailPage = lazy(() => import('./pages/events/EventDetailPage'));
+const EventTimelinePage = lazy(() => import('./pages/events/EventTimelinePage'));
+const EventRundownPage = lazy(() => import('./pages/events/EventRundownPage'));
+const EventChecklistPage = lazy(() => import('./pages/events/EventChecklistPage'));
+const EventTaskPage = lazy(() => import('./pages/events/EventTaskPage'));
+const EventBudgetPage = lazy(() => import('./pages/events/EventBudgetPage'));
+const EventVendorPage = lazy(() => import('./pages/events/EventVendorPage'));
+const EventDocumentPage = lazy(() => import('./pages/events/EventDocumentPage'));
+const EventApprovalPage = lazy(() => import('./pages/events/EventApprovalPage'));
+const EventEvaluationPage = lazy(() => import('./pages/events/EventEvaluationPage'));
+const EventReportPage = lazy(() => import('./pages/events/EventReportPage'));
+const AIGeneratorCenterPage = lazy(() => import('./pages/ai/AIGeneratorCenterPage'));
+const CalendarPage = lazy(() => import('./pages/calendar/CalendarPage'));
+const MasterEventTypePage = lazy(() => import('./pages/master/MasterEventTypePage'));
+const MasterVendorPage = lazy(() => import('./pages/master/MasterVendorPage'));
+const MasterVenuePage = lazy(() => import('./pages/master/MasterVenuePage'));
+const MasterEquipmentPage = lazy(() => import('./pages/master/MasterEquipmentPage'));
+const AISettingsPage = lazy(() => import('./pages/settings/AISettingsPage'));
+const UserManagementPage = lazy(() => import('./pages/settings/UserManagementPage'));
+const MyTasksPage = lazy(() => import('./pages/my-tasks/MyTasksPage'));
+const ReportsPage = lazy(() => import('./pages/reports/ReportsPage'));
+
+const PageLoader = () => (
+  <div className="flex items-center justify-center h-64">
+    <LoadingSpinner size="md" />
+  </div>
+);
 
 export default function App() {
   return (
     <Routes>
       {/* Public routes */}
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={
+        <Suspense fallback={<PageLoader />}><LoginPage /></Suspense>
+      } />
 
       {/* Protected routes */}
       <Route element={<RequireAuth />}>
         <Route element={<Layout />}>
           {/* Dashboard */}
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={
+            <Suspense fallback={<PageLoader />}><DashboardPage /></Suspense>
+          } />
 
           {/* Events */}
-          <Route path="/events" element={<EventListPage />} />
-          <Route path="/events/create" element={<EventCreatePage />} />
-          <Route path="/events/create-ai" element={<EventCreateAIPage />} />
-          <Route path="/events/:id" element={<EventDetailPage />} />
-          <Route path="/events/:id/timeline" element={<EventTimelinePage />} />
-          <Route path="/events/:id/rundown" element={<EventRundownPage />} />
-          <Route path="/events/:id/checklist" element={<EventChecklistPage />} />
-          <Route path="/events/:id/tasks" element={<EventTaskPage />} />
-          <Route path="/events/:id/budget" element={<EventBudgetPage />} />
-          <Route path="/events/:id/vendors" element={<EventVendorPage />} />
-          <Route path="/events/:id/documents" element={<EventDocumentPage />} />
-          <Route path="/events/:id/approval" element={<EventApprovalPage />} />
-          <Route path="/events/:id/evaluation" element={<EventEvaluationPage />} />
-          <Route path="/events/:id/report" element={<EventReportPage />} />
+          <Route path="/events" element={
+            <Suspense fallback={<PageLoader />}><EventListPage /></Suspense>
+          } />
+          <Route path="/events/create" element={
+            <Suspense fallback={<PageLoader />}><EventCreatePage /></Suspense>
+          } />
+          <Route path="/events/create-ai" element={
+            <Suspense fallback={<PageLoader />}><EventCreateAIPage /></Suspense>
+          } />
+          <Route path="/events/:id/edit" element={
+            <Suspense fallback={<PageLoader />}><EventEditPage /></Suspense>
+          } />
+          <Route path="/events/:id" element={
+            <Suspense fallback={<PageLoader />}><EventDetailPage /></Suspense>
+          } />
+          <Route path="/events/:id/timeline" element={
+            <Suspense fallback={<PageLoader />}><EventTimelinePage /></Suspense>
+          } />
+          <Route path="/events/:id/rundown" element={
+            <Suspense fallback={<PageLoader />}><EventRundownPage /></Suspense>
+          } />
+          <Route path="/events/:id/checklist" element={
+            <Suspense fallback={<PageLoader />}><EventChecklistPage /></Suspense>
+          } />
+          <Route path="/events/:id/tasks" element={
+            <Suspense fallback={<PageLoader />}><EventTaskPage /></Suspense>
+          } />
+          <Route path="/events/:id/budget" element={
+            <Suspense fallback={<PageLoader />}><EventBudgetPage /></Suspense>
+          } />
+          <Route path="/events/:id/vendors" element={
+            <Suspense fallback={<PageLoader />}><EventVendorPage /></Suspense>
+          } />
+          <Route path="/events/:id/documents" element={
+            <Suspense fallback={<PageLoader />}><EventDocumentPage /></Suspense>
+          } />
+          <Route path="/events/:id/approval" element={
+            <Suspense fallback={<PageLoader />}><EventApprovalPage /></Suspense>
+          } />
+          <Route path="/events/:id/evaluation" element={
+            <Suspense fallback={<PageLoader />}><EventEvaluationPage /></Suspense>
+          } />
+          <Route path="/events/:id/report" element={
+            <Suspense fallback={<PageLoader />}><EventReportPage /></Suspense>
+          } />
 
           {/* AI & Tools */}
-          <Route path="/ai-generator" element={<AIGeneratorCenterPage />} />
-          <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/my-tasks" element={<MyTasksPage />} />
-          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/ai-generator" element={
+            <Suspense fallback={<PageLoader />}><AIGeneratorCenterPage /></Suspense>
+          } />
+          <Route path="/calendar" element={
+            <Suspense fallback={<PageLoader />}><CalendarPage /></Suspense>
+          } />
+          <Route path="/my-tasks" element={
+            <Suspense fallback={<PageLoader />}><MyTasksPage /></Suspense>
+          } />
+          <Route path="/reports" element={
+            <Suspense fallback={<PageLoader />}><ReportsPage /></Suspense>
+          } />
 
           {/* Master Data - Super Admin & Admin Event */}
           <Route element={<RequireRole roles={['super_admin', 'admin_event']} />}>
-            <Route path="/master/event-types" element={<MasterEventTypePage />} />
-            <Route path="/master/vendors" element={<MasterVendorPage />} />
-            <Route path="/master/venues" element={<MasterVenuePage />} />
-            <Route path="/master/equipments" element={<MasterEquipmentPage />} />
+            <Route path="/master/event-types" element={
+              <Suspense fallback={<PageLoader />}><MasterEventTypePage /></Suspense>
+            } />
+            <Route path="/master/vendors" element={
+              <Suspense fallback={<PageLoader />}><MasterVendorPage /></Suspense>
+            } />
+            <Route path="/master/venues" element={
+              <Suspense fallback={<PageLoader />}><MasterVenuePage /></Suspense>
+            } />
+            <Route path="/master/equipments" element={
+              <Suspense fallback={<PageLoader />}><MasterEquipmentPage /></Suspense>
+            } />
           </Route>
 
           {/* Settings - Super Admin only */}
           <Route element={<RequireRole roles={['super_admin']} />}>
-            <Route path="/settings/ai" element={<AISettingsPage />} />
-            <Route path="/settings/users" element={<UserManagementPage />} />
+            <Route path="/settings/ai" element={
+              <Suspense fallback={<PageLoader />}><AISettingsPage /></Suspense>
+            } />
+            <Route path="/settings/users" element={
+              <Suspense fallback={<PageLoader />}><UserManagementPage /></Suspense>
+            } />
           </Route>
         </Route>
       </Route>

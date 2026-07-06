@@ -4,6 +4,7 @@ import useUiStore from '../../store/uiStore';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import MobileNav from './MobileNav';
+import useKeyboardShortcuts from '../../hooks/useKeyboardShortcuts';
 
 const pageTitles = {
   '/': 'Dashboard',
@@ -37,6 +38,9 @@ export default function Layout() {
   const location = useLocation();
   const pageTitle = getPageTitle(location.pathname);
 
+  // Register global keyboard shortcuts
+  useKeyboardShortcuts();
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Desktop sidebar — hidden on mobile via Sidebar component */}
@@ -52,6 +56,7 @@ export default function Layout() {
           title={pageTitle}
           user={user}
           onToggleSidebar={toggleSidebar}
+          onLogout={logout}
         />
 
         {/* Page content — bottom padding for mobile nav */}

@@ -28,26 +28,27 @@ export default function EventListPage() {
   const { page, totalPages, totalItems, setPage, setTotalItems, limit, setLimit } = usePagination(1, 10);
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({ status: '', type: '', search: '' });
+  const [filters, setFilters] = useState({ status: '', event_type_id: '', search: '' });
   const [eventTypeOptions, setEventTypeOptions] = useState([]);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page, limit, ...filters };
-      if (!params.status) delete params.status;
-      if (!params.type) delete params.type;
-      if (!params.search) delete params.search;
+      const params = { page, limit };
+      if (filters.status) params.status = filters.status;
+      if (filters.event_type_id) params.event_type_id = filters.event_type_id;
+      if (filters.search) params.search = filters.search;
+
       const res = await eventService.list(params);
-      // Normalize: API returns EventType (PascalCase), event_date, budget_max
-      const rawEvents = res.data.data.events || res.data.data;
+      const rawEvents = res.data.data;
+      // API returns snake_case fields: event_date, budget_max, estimated_participants, etc.
       const normalized = (Array.isArray(rawEvents) ? rawEvents : []).map((e) => ({
         ...e,
-        eventType: e.EventType || e.eventType,
-        startDate: e.event_date || e.startDate,
+        eventType: e.EventType || e.event_type_id || e.eventType,
+        startDate: e.event_date || e.start_date,
         budget: e.budget_max || e.budget || 0,
-        picMain: e.picMain?.name || e.picMain || '-',
+        picMain: e.pic_main?.name || e.pic_main || e.picMain?.name || e.picMain || '-',
       }));
       setEvents(normalized);
       setTotalItems(res.data.pagination?.total || normalized.length || 0);
@@ -196,8 +197,8 @@ export default function EventListPage() {
         </select>
 
         <select
-          value={filters.type}
-          onChange={(e) => { setFilters((f) => ({ ...f, type: e.target.value })); setPage(1); }}
+          value={filters.event_type_id}
+          onChange={(e) => { setFilters((f) => ({ ...f, event_type_id: e.target.value })); setPage(1); }}
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-dark-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
         >
           <option value="">Semua Tipe</option>
@@ -236,7 +237,7 @@ export default function EventListPage() {
         />
       )}
 
-      {/* Empty state (separate for when table also empty) */}
+      {/* Empty state */}
       {!loading && events.length === 0 && (
         <EmptyState
           icon={Calendar}

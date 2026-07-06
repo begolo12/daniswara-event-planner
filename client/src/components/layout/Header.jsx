@@ -1,15 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, ChevronRight, LogOut, User, Settings } from 'lucide-react';
+import { Menu, Bell, ChevronRight, LogOut, User, Settings, Search } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import SearchInput from '../ui/SearchInput';
+import toast from 'react-hot-toast';
 
 function getInitials(name) {
   if (!name) return '?';
   return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-export default function Header({ title, user, onToggleSidebar, breadcrumbItems }) {
+export default function Header({ title, user, onToggleSidebar, onLogout, breadcrumbItems }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -23,6 +25,13 @@ export default function Header({ title, user, onToggleSidebar, breadcrumbItems }
     return () => document.removeEventListener('mousedown', handler);
   }, [dropdownOpen]);
 
+  const handleGlobalSearch = (query) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      navigate(`/events?search=${encodeURIComponent(query.trim())}`);
+    }
+  };
+
   return (
     <header className="sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-gray-100">
       <div className="flex items-center gap-3 px-4 h-14">
@@ -31,20 +40,37 @@ export default function Header({ title, user, onToggleSidebar, breadcrumbItems }
           onClick={onToggleSidebar}
           className="hidden md:flex p-2 -ml-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
           title="Toggle sidebar"
+          aria-label="Toggle sidebar"
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        {/* Mobile: show title only */}
+        {/* Title */}
         <h1 className="text-base font-semibold text-gray-900 truncate flex-1 md:flex-none">{title}</h1>
 
         {/* Desktop: search bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-4">
-          <SearchInput placeholder="Cari event, vendor, lokasi..." />
+          <SearchInput
+            value={searchQuery}
+            onChange={handleGlobalSearch}
+            placeholder="Cari event, vendor, lokasi... (Ctrl+K)"
+          />
+        </div>
+
+        {/* Keyboard shortcut hint for power users */}
+        <div className="hidden lg:flex items-center gap-1 text-[10px] text-dark-300 mr-2">
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-dark-400 font-mono">Ctrl</kbd>
+          <span>+</span>
+          <kbd className="px-1 py-0.5 bg-gray-100 rounded text-dark-400 font-mono">N</kbd>
+          <span className="ml-1">Baru</span>
         </div>
 
         {/* Notification bell */}
-        <button className="relative p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+        <button
+          className="relative p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          aria-label="Notifikasi"
+          title="Notifikasi"
+        >
           <Bell className="w-5 h-5" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
         </button>
@@ -54,6 +80,8 @@ export default function Header({ title, user, onToggleSidebar, breadcrumbItems }
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
             className="flex items-center gap-2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label="Menu pengguna"
+            aria-expanded={dropdownOpen}
           >
             <div className="w-8 h-8 rounded-full bg-red-600 flex items-center justify-center text-white text-xs font-bold">
               {getInitials(user?.name)}
@@ -82,7 +110,7 @@ export default function Header({ title, user, onToggleSidebar, breadcrumbItems }
               </div>
               <div className="border-t border-gray-100 py-1">
                 <button
-                  onClick={() => { setDropdownOpen(false); navigate('/login'); }}
+                  onClick={() => { setDropdownOpen(false); if (onLogout) onLogout(); }}
                   className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="w-4 h-4" /> Keluar
@@ -96,7 +124,7 @@ export default function Header({ title, user, onToggleSidebar, breadcrumbItems }
       {/* Breadcrumbs */}
       {breadcrumbItems?.length > 0 && (
         <div className="px-4 pb-2">
-          <nav className="flex items-center gap-1 text-xs text-gray-400">
+          <nav className="flex items-center gap-1 text-xs text-gray-400" aria-label="Breadcrumb">
             {breadcrumbItems.map((item, i) => (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight className="w-3 h-3" />}

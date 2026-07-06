@@ -14,12 +14,12 @@ export default function Table({
 }) {
   if (loading) {
     return (
-      <div className="overflow-x-auto rounded-xl border border-gray-100">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto rounded-xl border border-gray-100 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm" aria-label="Loading table">
           <thead className="bg-gray-50">
             <tr>
               {columns.map((col) => (
-                <th key={col.key} className="px-4 py-3 text-left font-medium text-dark-500">
+                <th key={col.key} className="px-4 py-3 text-left font-medium text-dark-500 whitespace-nowrap">
                   {col.label}
                 </th>
               ))}
@@ -43,7 +43,7 @@ export default function Table({
 
   if (data.length === 0) {
     return (
-      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex flex-col items-center justify-center py-16 text-center">
           {emptyIcon && <div className="text-gray-300 mb-3">{emptyIcon}</div>}
           <p className="text-dark-500 text-sm">{emptyMessage}</p>
@@ -53,8 +53,8 @@ export default function Table({
   }
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-gray-100">
-      <table className="w-full text-sm">
+    <div className="overflow-x-auto rounded-xl border border-gray-100 -mx-4 px-4 sm:mx-0 sm:px-0" role="table">
+      <table className="w-full text-sm min-w-[600px]" aria-label="Data table">
         <thead className="bg-gray-50">
           <tr>
             {columns.map((col) => (
@@ -63,6 +63,7 @@ export default function Table({
                 className={`px-4 py-3 text-left font-medium text-dark-500 whitespace-nowrap
                   ${col.sortable ? 'cursor-pointer select-none hover:text-dark-700' : ''}`}
                 onClick={() => col.sortable && onSort && onSort(col.key)}
+                scope="col"
               >
                 <span className="inline-flex items-center gap-1">
                   {col.label}
@@ -82,6 +83,7 @@ export default function Table({
               key={row.id || idx}
               className={`hover:bg-gray-50 transition-colors ${onRowClick ? 'cursor-pointer' : ''}`}
               onClick={() => onRowClick && onRowClick(row)}
+              role={onRowClick ? 'button' : undefined}
             >
               {columns.map((col) => (
                 <td key={col.key} className="px-4 py-3 text-dark-700 whitespace-nowrap">

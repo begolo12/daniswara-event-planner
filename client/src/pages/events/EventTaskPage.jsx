@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { tasks } from '../../services/eventSubService';
-import { PRIORITIES } from '../../utils/constants';
+import { PRIORITIES, TASK_STATUSES } from '../../utils/constants';
 import { formatDate } from '../../utils/formatters';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
@@ -14,18 +14,19 @@ import FormTextarea from '../../components/ui/FormTextarea';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import EmptyState from '../../components/ui/EmptyState';
-import StatusBadge from '../../components/ui/StatusBadge';
 
 const initialTask = {
-  title: '',
+  task_name: '',
   description: '',
-  assignee: '',
+  pic_id: '',
   deadline: '',
   priority: 'medium',
   progress: 0,
+  notes: '',
 };
 
 const priorityOptions = Object.entries(PRIORITIES).map(([k, v]) => ({ value: k, label: v.label }));
+const statusOptions = Object.entries(TASK_STATUSES).map(([k, v]) => ({ value: k, label: v.label }));
 
 export default function EventTaskPage() {
   const { id: eventId } = useParams();
@@ -63,12 +64,13 @@ export default function EventTaskPage() {
   const openEdit = (task) => {
     setEditingTask(task);
     setForm({
-      title: task.title || '',
+      task_name: task.task_name || '',
       description: task.description || '',
-      assignee: task.assignee || '',
+      pic_id: task.pic_id || '',
       deadline: task.deadline ? task.deadline.slice(0, 10) : '',
       priority: task.priority || 'medium',
       progress: task.progress || 0,
+      notes: task.notes || '',
     });
     setShowAddModal(true);
   };
@@ -80,15 +82,23 @@ export default function EventTaskPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.title.trim()) {
-      toast.error('Judul tugas wajib diisi');
+    if (!form.task_name.trim()) {
+      toast.error('Nama tugas wajib diisi');
       return;
     }
     setSubmitting(true);
     try {
-      const payload = { ...form, progress: Number(form.progress) };
+      const payload = {
+        task_name: form.task_name,
+        description: form.description,
+        pic_id: form.pic_id ? Number(form.pic_id) : null,
+        deadline: form.deadline || null,
+        priority: form.priority,
+        progress: Number(form.progress),
+        notes: form.notes,
+      };
       if (editingTask) {
-        await tasks.update(eventId, editingTask.id || editingTask._id, payload);
+        await tasks.update(eventId, editingTask.id, payload);
         toast.success('Tugas berhasil diperbarui');
       } else {
         await tasks.create(eventId, payload);
@@ -106,7 +116,7 @@ export default function EventTaskPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await tasks.delete(eventId, deleteTarget.id || deleteTarget._id);
+      await tasks.delete(eventId, deleteTarget.id);
       toast.success('Tugas berhasil dihapus');
       setDeleteTarget(null);
       fetchTasks();
@@ -117,28 +127,28 @@ export default function EventTaskPage() {
 
   const handleProgressUpdate = async (task, progress) => {
     try {
-      await tasks.updateProgress(eventId, task.id || task._id, progress);
+      await tasks.updateProgress(eventId, task.id, progress);
       fetchTasks();
     } catch {
       toast.error('Gagal update progress');
     }
   };
 
-  // Unique PICs for filter
-  const uniquePICs = [...new Set(taskList.map((t) => t.assignee).filter(Boolean))];
+  // Unique PIC IDs for filter
+  const uniquePICs = [...new Set(taskList.map((t) => t.pic_id).filter(Boolean))];
 
   // Filter
   const filteredTasks = taskList.filter((t) => {
-    if (filterPIC && t.assignee !== filterPIC) return false;
+    if (filterPIC && String(t.pic_id) !== filterPIC) return false;
     if (filterPriority && t.priority !== filterPriority) return false;
     return true;
   });
 
   // Group by status
   const grouped = {
-    pending: filteredTasks.filter((t) => t.status === 'pending' || (!t.status && t.progress < 100)),
+    not_started: filteredTasks.filter((t) => t.status === 'not_started' || (!t.status && t.progress === 0)),
     in_progress: filteredTasks.filter((t) => t.status === 'in_progress' || (t.progress > 0 && t.progress < 100)),
-    completed: filteredTasks.filter((t) => t.status === 'completed' || t.progress === 100),
+    done: filteredTasks.filter((t) => t.status === 'done' || t.progress === 100),
   };
 
   if (loading) {
@@ -162,7 +172,7 @@ export default function EventTaskPage() {
           >
             <option value="">Semua PIC</option>
             {uniquePICs.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <option key={p} value={p}>PIC #{p}</option>
             ))}
           </select>
           <select
@@ -192,46 +202,56 @@ export default function EventTaskPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
-            { key: 'pending', label: 'Belum Dikerjakan', color: 'gray' },
+            { key: 'not_started', label: 'Belum Dikerjakan', color: 'gray' },
             { key: 'in_progress', label: 'Sedang Dikerjakan', color: 'blue' },
-            { key: 'completed', label: 'Selesai', color: 'green' },
+            { key: 'done', label: 'Selesai', color: 'green' },
           ].map((col) => (
             <div key={col.key} className="bg-gray-50 rounded-xl p-4">
               <h3 className="text-sm font-semibold text-dark-700 mb-3 flex items-center gap-2">
-                <StatusBadge status={col.key === 'in_progress' ? 'in_progress' : col.key} />
+                {TASK_STATUSES[col.key] && (
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    col.key === 'done' ? 'bg-green-100 text-green-700' :
+                    col.key === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {TASK_STATUSES[col.key].label}
+                  </span>
+                )}
                 <span className="text-dark-400">({grouped[col.key]?.length || 0})</span>
               </h3>
               <div className="space-y-2">
                 {(grouped[col.key] || []).map((task) => (
-                  <Card key={task.id || task._id} padding="p-3">
+                  <Card key={task.id} padding="p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-dark-900">{task.title}</p>
+                        <p className="text-sm font-medium text-dark-900">{task.task_name}</p>
                         {task.description && (
                           <p className="text-xs text-dark-400 mt-1 line-clamp-2">{task.description}</p>
                         )}
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-2 mt-2 flex-wrap">
                           <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                            task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                            task.priority === 'critical' ? 'bg-red-100 text-red-700' :
                             task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
                             task.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
                             'bg-gray-100 text-gray-700'
                           }`}>
                             {PRIORITIES[task.priority]?.label || task.priority}
                           </span>
-                          {task.assignee && (
-                            <span className="text-xs text-dark-400">{task.assignee}</span>
+                          {task.pic_id && (
+                            <span className="text-xs text-dark-400">PIC #{task.pic_id}</span>
                           )}
                         </div>
                         {task.deadline && (
                           <p className="text-xs text-dark-400 mt-1">Deadline: {formatDate(task.deadline)}</p>
                         )}
-                        {/* Progress slider */}
+                        {/* Progress bar */}
                         <div className="mt-2">
                           <div className="flex items-center gap-2">
                             <div className="flex-1 bg-gray-200 rounded-full h-2">
                               <div
-                                className="bg-brand-600 h-2 rounded-full transition-all"
+                                className={`h-2 rounded-full transition-all ${
+                                  (task.progress || 0) === 100 ? 'bg-green-500' : 'bg-brand-600'
+                                }`}
                                 style={{ width: `${task.progress || 0}%` }}
                               />
                             </div>
@@ -279,10 +299,12 @@ export default function EventTaskPage() {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormInput label="Judul" name="title" value={form.title} onChange={handleChange} required placeholder="Judul tugas" />
+          <FormInput label="Nama Tugas" name="task_name" value={form.task_name} onChange={handleChange} required placeholder="Judul tugas" />
           <FormTextarea label="Deskripsi" name="description" value={form.description} onChange={handleChange} placeholder="Deskripsi tugas" rows={3} />
-          <FormInput label="PIC" name="assignee" value={form.assignee} onChange={handleChange} placeholder="Penanggung jawab" />
-          <FormInput label="Deadline" name="deadline" type="date" value={form.deadline} onChange={handleChange} />
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="PIC ID" name="pic_id" type="number" value={form.pic_id} onChange={handleChange} placeholder="ID penanggung jawab" />
+            <FormInput label="Deadline" name="deadline" type="date" value={form.deadline} onChange={handleChange} />
+          </div>
           <FormSelect label="Prioritas" name="priority" value={form.priority} onChange={handleChange} options={priorityOptions} />
           <div>
             <label className="block text-sm font-medium text-dark-700 mb-1.5">
@@ -298,6 +320,7 @@ export default function EventTaskPage() {
               className="w-full accent-brand-600"
             />
           </div>
+          <FormTextarea label="Catatan" name="notes" value={form.notes} onChange={handleChange} placeholder="Catatan tugas" rows={2} />
         </form>
       </Modal>
 
@@ -307,7 +330,7 @@ export default function EventTaskPage() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         title="Hapus Tugas"
-        message={`Hapus tugas "${deleteTarget?.title}"?`}
+        message={`Hapus tugas "${deleteTarget?.task_name}"?`}
         confirmText="Hapus"
       />
     </div>

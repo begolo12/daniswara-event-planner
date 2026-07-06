@@ -4,10 +4,12 @@ import { Plus, Edit, Trash2, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { budgets } from '../../services/eventSubService';
 import { formatCurrency } from '../../utils/formatters';
+import { PRIORITIES } from '../../utils/constants';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import Modal from '../../components/ui/Modal';
 import FormInput from '../../components/ui/FormInput';
+import FormSelect from '../../components/ui/FormSelect';
 import FormTextarea from '../../components/ui/FormTextarea';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
@@ -16,10 +18,20 @@ import EmptyState from '../../components/ui/EmptyState';
 const initialItem = {
   category: '',
   item: '',
-  plannedCost: '',
-  description: '',
+  quantity: 1,
+  unit_price: '',
+  total_price: '',
+  priority: 'medium',
+  saving_alternative: '',
   notes: '',
 };
+
+const priorityOptions = [
+  { value: 'low', label: 'Rendah' },
+  { value: 'medium', label: 'Sedang' },
+  { value: 'high', label: 'Tinggi' },
+  { value: 'critical', label: 'Kritis' },
+];
 
 export default function EventBudgetPage() {
   const { id: eventId } = useParams();
@@ -47,8 +59,8 @@ export default function EventBudgetPage() {
   }, [fetchItems]);
 
   const summary = useMemo(() => {
-    const totalPlanned = items.reduce((sum, i) => sum + (Number(i.plannedCost) || 0), 0);
-    const totalActual = items.reduce((sum, i) => sum + (Number(i.actualCost) || 0), 0);
+    const totalPlanned = items.reduce((sum, i) => sum + (Number(i.total_price) || 0), 0);
+    const totalActual = items.reduce((sum, i) => sum + (Number(i.actual_cost) || 0), 0);
     return {
       totalPlanned,
       totalActual,
@@ -62,8 +74,8 @@ export default function EventBudgetPage() {
     items.forEach((i) => {
       const cat = i.category || 'Lainnya';
       if (!map[cat]) map[cat] = { planned: 0, actual: 0 };
-      map[cat].planned += Number(i.plannedCost) || 0;
-      map[cat].actual += Number(i.actualCost) || 0;
+      map[cat].planned += Number(i.total_price) || 0;
+      map[cat].actual += Number(i.actual_cost) || 0;
     });
     return Object.entries(map).map(([name, data]) => ({ name, ...data }));
   }, [items]);
@@ -79,8 +91,11 @@ export default function EventBudgetPage() {
     setForm({
       category: item.category || '',
       item: item.item || '',
-      plannedCost: item.plannedCost || '',
-      description: item.description || '',
+      quantity: item.quantity || 1,
+      unit_price: item.unit_price || '',
+      total_price: item.total_price || '',
+      priority: item.priority || 'medium',
+      saving_alternative: item.saving_alternative || '',
       notes: item.notes || '',
     });
     setShowAddModal(true);
@@ -88,7 +103,16 @@ export default function EventBudgetPage() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value };
+      // Auto-calculate total_price from quantity * unit_price
+      if (name === 'quantity' || name === 'unit_price') {
+        const qty = Number(name === 'quantity' ? value : updated.quantity) || 0;
+        const unitPrice = Number(name === 'unit_price' ? value : updated.unit_price) || 0;
+        updated.total_price = qty * unitPrice;
+      }
+      return updated;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -97,11 +121,24 @@ export default function EventBudgetPage() {
       toast.error('Nama item wajib diisi');
       return;
     }
+    if (!form.category.trim()) {
+      toast.error('Kategori wajib diisi');
+      return;
+    }
     setSubmitting(true);
     try {
-      const payload = { ...form, plannedCost: Number(form.plannedCost) || 0 };
+      const payload = {
+        category: form.category,
+        item: form.item,
+        quantity: Number(form.quantity) || 1,
+        unit_price: Number(form.unit_price) || 0,
+        total_price: Number(form.total_price) || 0,
+        priority: form.priority,
+        saving_alternative: form.saving_alternative,
+        notes: form.notes,
+      };
       if (editingItem) {
-        await budgets.update(eventId, editingItem.id || editingItem._id, payload);
+        await budgets.update(eventId, editingItem.id, payload);
         toast.success('Anggaran berhasil diperbarui');
       } else {
         await budgets.create(eventId, payload);
@@ -116,19 +153,10 @@ export default function EventBudgetPage() {
     }
   };
 
-  const handleActualCostUpdate = async (item, actualCost) => {
-    try {
-      await budgets.updateActual(eventId, item.id || item._id, Number(actualCost));
-      fetchItems();
-    } catch {
-      toast.error('Gagal update biaya aktual');
-    }
-  };
-
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await budgets.delete(eventId, deleteTarget.id || deleteTarget._id);
+      await budgets.delete(eventId, deleteTarget.id);
       toast.success('Anggaran berhasil dihapus');
       setDeleteTarget(null);
       fetchItems();
@@ -150,13 +178,15 @@ export default function EventBudgetPage() {
       doc.text(`Sisa: ${formatCurrency(summary.remaining)}`, 14, 44);
       autoTable(doc, {
         startY: 52,
-        head: [['Kategori', 'Item', 'Rencana', 'Aktual', 'Keterangan']],
+        head: [['Kategori', 'Item', 'Qty', 'Harga Satuan', 'Total', 'Prioritas', 'Aktual']],
         body: items.map((i) => [
           i.category || '-',
           i.item,
-          formatCurrency(i.plannedCost),
-          formatCurrency(i.actualCost || 0),
-          i.description || '-',
+          i.quantity || 1,
+          formatCurrency(i.unit_price),
+          formatCurrency(i.total_price),
+          PRIORITIES[i.priority]?.label || i.priority || '-',
+          formatCurrency(i.actual_cost || 0),
         ]),
         styles: { fontSize: 8 },
         headStyles: { fillColor: [239, 68, 68] },
@@ -221,7 +251,7 @@ export default function EventBudgetPage() {
         </Card>
       </div>
 
-      {/* Category Chart (text-based) */}
+      {/* Category Chart */}
       {categoryData.length > 0 && (
         <Card>
           <h3 className="text-sm font-semibold text-dark-700 mb-3">Per Kategori</h3>
@@ -260,27 +290,33 @@ export default function EventBudgetPage() {
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-dark-500">Kategori</th>
                   <th className="px-4 py-3 text-left font-medium text-dark-500">Item</th>
-                  <th className="px-4 py-3 text-right font-medium text-dark-500">Rencana</th>
+                  <th className="px-4 py-3 text-center font-medium text-dark-500">Qty</th>
+                  <th className="px-4 py-3 text-right font-medium text-dark-500">Harga Satuan</th>
+                  <th className="px-4 py-3 text-right font-medium text-dark-500">Total</th>
                   <th className="px-4 py-3 text-right font-medium text-dark-500">Aktual</th>
-                  <th className="px-4 py-3 text-left font-medium text-dark-500">Keterangan</th>
+                  <th className="px-4 py-3 text-center font-medium text-dark-500">Prioritas</th>
                   <th className="px-4 py-3 text-left font-medium text-dark-500">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {items.map((item) => (
-                  <tr key={item.id || item._id} className="hover:bg-gray-50">
+                  <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-dark-700">{item.category || '-'}</td>
                     <td className="px-4 py-3 font-medium text-dark-900">{item.item}</td>
-                    <td className="px-4 py-3 text-right text-dark-700">{formatCurrency(item.plannedCost)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <input
-                        type="number"
-                        defaultValue={item.actualCost || 0}
-                        onBlur={(e) => handleActualCostUpdate(item, e.target.value)}
-                        className="w-28 text-right rounded border border-gray-200 px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
-                      />
+                    <td className="px-4 py-3 text-center text-dark-700">{item.quantity || 1}</td>
+                    <td className="px-4 py-3 text-right text-dark-700">{formatCurrency(item.unit_price)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-dark-900">{formatCurrency(item.total_price)}</td>
+                    <td className="px-4 py-3 text-right text-dark-700">{formatCurrency(item.actual_cost || 0)}</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        item.priority === 'critical' ? 'bg-red-100 text-red-700' :
+                        item.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                        item.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {PRIORITIES[item.priority]?.label || item.priority}
+                      </span>
                     </td>
-                    <td className="px-4 py-3 text-dark-600">{item.description || '-'}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => openEdit(item)} className="p-1.5 rounded-lg text-dark-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
@@ -296,7 +332,7 @@ export default function EventBudgetPage() {
               </tbody>
               <tfoot className="bg-gray-50 font-semibold">
                 <tr>
-                  <td colSpan={2} className="px-4 py-3 text-dark-700">Total</td>
+                  <td colSpan={4} className="px-4 py-3 text-dark-700">Total</td>
                   <td className="px-4 py-3 text-right text-dark-900">{formatCurrency(summary.totalPlanned)}</td>
                   <td className="px-4 py-3 text-right text-dark-900">{formatCurrency(summary.totalActual)}</td>
                   <td colSpan={2} />
@@ -322,23 +358,41 @@ export default function EventBudgetPage() {
         }
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormInput label="Kategori" name="category" value={form.category} onChange={handleChange} placeholder="Contoh: Catering, Dekorasi" />
+          <FormInput label="Kategori" name="category" value={form.category} onChange={handleChange} required placeholder="Contoh: Catering, Dekorasi" />
           <FormInput label="Item" name="item" value={form.item} onChange={handleChange} required placeholder="Nama item anggaran" />
+          <div className="grid grid-cols-2 gap-4">
+            <FormInput label="Jumlah" name="quantity" type="number" value={form.quantity} onChange={handleChange} min="1" />
+            <div>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Harga Satuan (Rp)</label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
+                <input
+                  name="unit_price"
+                  type="number"
+                  value={form.unit_price}
+                  onChange={handleChange}
+                  placeholder="0"
+                  className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
+                />
+              </div>
+            </div>
+          </div>
           <div>
-            <label className="block text-sm font-medium text-dark-700 mb-1.5">Biaya Rencana (Rp)</label>
+            <label className="block text-sm font-medium text-dark-700 mb-1.5">Total Harga (Rp)</label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">Rp</span>
               <input
-                name="plannedCost"
+                name="total_price"
                 type="number"
-                value={form.plannedCost}
+                value={form.total_price}
                 onChange={handleChange}
                 placeholder="0"
                 className="w-full rounded-lg border border-gray-300 bg-white pl-10 pr-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               />
             </div>
           </div>
-          <FormInput label="Keterangan" name="description" value={form.description} onChange={handleChange} placeholder="Deskripsi item" />
+          <FormSelect label="Prioritas" name="priority" value={form.priority} onChange={handleChange} options={priorityOptions} />
+          <FormInput label="Alternatif Penghematan" name="saving_alternative" value={form.saving_alternative} onChange={handleChange} placeholder="Cara menghemat biaya ini" />
           <FormTextarea label="Catatan" name="notes" value={form.notes} onChange={handleChange} placeholder="Catatan tambahan" rows={2} />
         </form>
       </Modal>

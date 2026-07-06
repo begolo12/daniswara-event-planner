@@ -54,7 +54,11 @@ export default function MasterEquipmentPage() {
     setLoading(true);
     try {
       const res = await masterService.equipments.list();
-      setItems(res.data?.data || []);
+      const raw = res.data?.data || [];
+      setItems(Array.isArray(raw) ? raw.map((e) => ({
+        ...e,
+        unitCost: e.unit_cost || e.unitCost || '',
+      })) : []);
     } catch {
       toast.error('Gagal memuat data');
     } finally {
@@ -85,7 +89,7 @@ export default function MasterEquipmentPage() {
     setForm({
       name: item.name || '', category: item.category || '',
       description: item.description || '', quantity: item.quantity || '',
-      unitCost: item.unitCost || '', availability: item.availability || 'available',
+      unitCost: item.unit_cost || item.unitCost || '', availability: item.availability || 'available',
       notes: item.notes || '',
     });
     setShowModal(true);

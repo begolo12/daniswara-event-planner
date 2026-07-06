@@ -16,6 +16,17 @@ app.use(morgan('dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// ── Root endpoint (for Render health check) ───────────
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Daniswara Event Planner API',
+    version: '1.0.0',
+    health: '/api/health',
+    docs: '/api',
+  });
+});
+
 // ── Static files (uploads) ────────────────────────────
 app.use('/uploads', express.static('uploads'));
 

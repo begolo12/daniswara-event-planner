@@ -80,7 +80,7 @@ export default function DocumentList({ documents = [], onEdit, onDelete, onAdd, 
                          doc.status === 'published' ? 'Diterbitkan' : doc.status}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-dark-500">{formatDate(doc.date || doc.createdAt)}</td>
+                    <td className="px-4 py-3 text-dark-500">{formatDate(doc.created_at || doc.date || doc.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-1">
                         {onExport && (

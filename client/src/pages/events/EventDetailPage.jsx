@@ -1,23 +1,34 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Outlet, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Edit,
   Send,
   Check,
-  RefreshCw,
   X,
   CheckCircle,
   FileText,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import eventService from '../../services/eventService';
-import { EVENT_STATUSES, APPROVAL_STATUSES } from '../../utils/constants';
+import { EVENT_STATUSES } from '../../utils/constants';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import StatusBadge from '../../components/ui/StatusBadge';
 import Button from '../../components/ui/Button';
 import Card from '../../components/ui/Card';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
+
+// Import sub-page components
+import EventTimelinePage from './EventTimelinePage';
+import EventRundownPage from './EventRundownPage';
+import EventChecklistPage from './EventChecklistPage';
+import EventTaskPage from './EventTaskPage';
+import EventBudgetPage from './EventBudgetPage';
+import EventVendorPage from './EventVendorPage';
+import EventDocumentPage from './EventDocumentPage';
+import EventApprovalPage from './EventApprovalPage';
+import EventEvaluationPage from './EventEvaluationPage';
+import EventReportPage from './EventReportPage';
 
 const TABS = [
   { key: 'overview', label: 'Overview' },
@@ -30,13 +41,12 @@ const TABS = [
   { key: 'documents', label: 'Dokumen' },
   { key: 'approvals', label: 'Persetujuan' },
   { key: 'evaluation', label: 'Evaluasi' },
-  { key: 'reports', label: 'Laporan' },
+  { key: 'report', label: 'Laporan' },
 ];
 
 export default function EventDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -58,22 +68,8 @@ export default function EventDetailPage() {
     fetchEvent();
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync tab from URL
-  useEffect(() => {
-    const pathParts = location.pathname.split('/');
-    const lastPart = pathParts[pathParts.length - 1];
-    const matched = TABS.find((t) => t.key === lastPart);
-    if (matched) setActiveTab(matched.key);
-    else if (pathParts.length <= 3) setActiveTab('overview');
-  }, [location.pathname]);
-
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === 'overview') {
-      navigate(`/events/${id}`);
-    } else {
-      navigate(`/events/${id}/${tab}`);
-    }
   };
 
   const handleStatusAction = async (action) => {
@@ -88,7 +84,7 @@ export default function EventDetailPage() {
         await eventService.reject(id, 'Ditolak');
         toast.success('Event ditolak');
       } else if (action === 'completed') {
-        await eventService.changeStatus(id, 'completed');
+        await eventService.changeStatus(id, 'done');
         toast.success('Event ditandai selesai');
       }
       fetchEvent();
@@ -109,18 +105,39 @@ export default function EventDetailPage() {
   if (!event) return null;
 
   const status = event.status;
+
+  const eventData = {
+    name: event.name,
+    eventType: event.EventType || event.event_type_id || event.eventType,
+    eventDate: event.event_date || event.start_date,
+    startTime: event.start_time,
+    endTime: event.end_time,
+    location: event.location,
+    venue: event.venue,
+    format: event.format,
+    estimatedParticipants: event.estimated_participants,
+    targetParticipants: event.target_participants,
+    goal: event.goal,
+    tone: event.tone,
+    budgetMax: event.budget_max,
+    division: event.division,
+    picMain: event.pic_main || event.picMain,
+    notes: event.notes,
+  };
+
   const detailItems = [
-    { label: 'Tipe Event', value: typeof event.eventType === 'object' ? event.eventType?.name : event.eventType || '-' },
-    { label: 'Tanggal Mulai', value: formatDate(event.startDate) },
-    { label: 'Tanggal Selesai', value: formatDate(event.endDate) },
-    { label: 'Waktu', value: event.startTime && event.endTime ? `${event.startTime} - ${event.endTime}` : '-' },
-    { label: 'Lokasi', value: event.location || '-' },
-    { label: 'Venue', value: event.venue || '-' },
-    { label: 'Format', value: event.format || '-' },
-    { label: 'Target Peserta', value: event.targetParticipants || '-' },
-    { label: 'PIC Utama', value: event.picMain || '-' },
-    { label: 'Divisi', value: event.division || '-' },
-    { label: 'Budget', value: formatCurrency(event.budget) },
+    { label: 'Tipe Event', value: typeof eventData.eventType === 'object' ? eventData.eventType?.name : eventData.eventType || '-' },
+    { label: 'Tanggal', value: formatDate(eventData.eventDate) },
+    { label: 'Waktu', value: eventData.startTime && eventData.endTime ? `${eventData.startTime} - ${eventData.endTime}` : '-' },
+    { label: 'Lokasi', value: eventData.location || '-' },
+    { label: 'Venue', value: eventData.venue || '-' },
+    { label: 'Format', value: eventData.format || '-' },
+    { label: 'Estimasi Peserta', value: eventData.estimatedParticipants || '-' },
+    { label: 'Target Peserta', value: eventData.targetParticipants || '-' },
+    { label: 'PIC Utama', value: eventData.picMain?.name || eventData.picMain || '-' },
+    { label: 'Divisi', value: eventData.division || '-' },
+    { label: 'Budget', value: formatCurrency(eventData.budgetMax) },
+    { label: 'Tone', value: eventData.tone || '-' },
   ];
 
   const renderActions = () => {
@@ -136,14 +153,11 @@ export default function EventDetailPage() {
             </Button>
           </>
         );
-      case 'approval':
+      case 'waiting_approval':
         return (
           <>
             <Button variant="primary" icon={<Check />} onClick={() => setConfirmAction('approve')}>
               Setujui
-            </Button>
-            <Button variant="secondary" icon={<RefreshCw />} onClick={() => setConfirmAction('revision')}>
-              Revisi
             </Button>
             <Button variant="danger" icon={<X />} onClick={() => setConfirmAction('reject')}>
               Tolak
@@ -161,18 +175,138 @@ export default function EventDetailPage() {
             </Button>
           </>
         );
-      case 'in_progress':
+      case 'preparation':
+      case 'ready':
+      case 'on_going':
         return (
           <Button variant="primary" icon={<CheckCircle />} onClick={() => setConfirmAction('completed')}>
             Tandai Selesai
           </Button>
         );
-      case 'completed':
+      case 'done':
+      case 'evaluated':
         return (
-          <Button variant="primary" icon={<FileText />} onClick={() => navigate(`/events/${id}/reports`)}>
+          <Button variant="primary" icon={<FileText />} onClick={() => setActiveTab('report')}>
             Buat Laporan
           </Button>
         );
+      default:
+        return null;
+    }
+  };
+
+  const renderStatusFlow = () => {
+    const statusOrder = ['draft', 'planning', 'waiting_approval', 'preparation', 'ready', 'on_going', 'done', 'evaluated'];
+    return (
+      <div className="flex items-center gap-1 text-xs overflow-x-auto pb-1">
+        {statusOrder.map((key, idx) => (
+          <span key={key} className="flex items-center gap-1 whitespace-nowrap">
+            {idx > 0 && <span className="text-dark-200 mx-0.5">→</span>}
+            <span className={
+              key === status
+                ? 'font-semibold text-brand-600'
+                : statusOrder.indexOf(status) > idx
+                ? 'text-green-500'
+                : 'text-dark-300'
+            }>
+              {EVENT_STATUSES[key]?.label || key}
+            </span>
+          </span>
+        ))}
+      </div>
+    );
+  };
+
+  // Render sub-page content inline
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return (
+          <Card>
+            <h2 className="text-lg font-semibold text-dark-900 mb-4">Detail Event</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {detailItems.map((item) => (
+                <div key={item.label}>
+                  <p className="text-xs text-dark-400 mb-0.5">{item.label}</p>
+                  <p className="text-sm text-dark-900 font-medium">{item.value}</p>
+                </div>
+              ))}
+            </div>
+            {eventData.goal && (
+              <div className="mt-4">
+                <p className="text-xs text-dark-400 mb-0.5">Tujuan</p>
+                <p className="text-sm text-dark-900">{eventData.goal}</p>
+              </div>
+            )}
+            {eventData.notes && (
+              <div className="mt-4">
+                <p className="text-xs text-dark-400 mb-0.5">Catatan</p>
+                <p className="text-sm text-dark-900">{eventData.notes}</p>
+              </div>
+            )}
+            {/* Sub-resources summary */}
+            {event.themes?.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-dark-400 mb-1">Tema ({event.themes.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {event.themes.map((t) => (
+                    <span key={t.id} className={`px-2 py-1 rounded-full text-xs font-medium ${t.is_selected ? 'bg-brand-100 text-brand-700' : 'bg-gray-100 text-gray-700'}`}>
+                      {t.theme_name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {event.tasks?.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-dark-400 mb-1">Tugas ({event.tasks.length})</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                    {event.tasks.filter(t => t.status === 'done').length} selesai
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">
+                    {event.tasks.filter(t => t.status === 'in_progress').length} berlangsung
+                  </span>
+                  <span className="px-2 py-1 rounded-full bg-gray-100 text-gray-700">
+                    {event.tasks.filter(t => t.status === 'not_started').length} belum mulai
+                  </span>
+                </div>
+              </div>
+            )}
+            {event.risks?.length > 0 && (
+              <div className="mt-4">
+                <p className="text-xs text-dark-400 mb-1">Risiko ({event.risks.length})</p>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  {event.risks.slice(0, 3).map((r) => (
+                    <span key={r.id} className="px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                      {r.risk?.substring(0, 40)}...
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </Card>
+        );
+      case 'timeline':
+        return <EventTimelinePage />;
+      case 'rundown':
+        return <EventRundownPage />;
+      case 'checklist':
+        return <EventChecklistPage />;
+      case 'tasks':
+        return <EventTaskPage />;
+      case 'budget':
+        return <EventBudgetPage />;
+      case 'vendors':
+        return <EventVendorPage />;
+      case 'documents':
+        return <EventDocumentPage />;
+      case 'approvals':
+        return <EventApprovalPage />;
+      case 'evaluation':
+        return <EventEvaluationPage />;
+      case 'report':
+        return <EventReportPage />;
       default:
         return null;
     }
@@ -187,17 +321,7 @@ export default function EventDetailPage() {
             <h1 className="text-2xl font-bold text-dark-900">{event.name}</h1>
             <StatusBadge status={status} />
           </div>
-          {/* Status flow indicator */}
-          <div className="flex items-center gap-2 text-xs text-dark-400">
-            {Object.entries(EVENT_STATUSES).map(([key, cfg], idx) => (
-              <span key={key} className="flex items-center gap-1">
-                {idx > 0 && <span className="text-dark-200 mx-1">/</span>}
-                <span className={key === status ? 'font-semibold text-brand-600' : ''}>
-                  {cfg.label}
-                </span>
-              </span>
-            ))}
-          </div>
+          {renderStatusFlow()}
         </div>
         <div className="flex items-center gap-2 flex-wrap">{renderActions()}</div>
       </div>
@@ -221,40 +345,8 @@ export default function EventDetailPage() {
         </nav>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'overview' ? (
-        <Card>
-          <h2 className="text-lg font-semibold text-dark-900 mb-4">Detail Event</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {detailItems.map((item) => (
-              <div key={item.label}>
-                <p className="text-xs text-dark-400 mb-0.5">{item.label}</p>
-                <p className="text-sm text-dark-900 font-medium">{item.value}</p>
-              </div>
-            ))}
-          </div>
-          {event.targetAudience && (
-            <div className="mt-4">
-              <p className="text-xs text-dark-400 mb-0.5">Target Audiens</p>
-              <p className="text-sm text-dark-900">{event.targetAudience}</p>
-            </div>
-          )}
-          {event.goal && (
-            <div className="mt-4">
-              <p className="text-xs text-dark-400 mb-0.5">Tujuan</p>
-              <p className="text-sm text-dark-900">{event.goal}</p>
-            </div>
-          )}
-          {event.notes && (
-            <div className="mt-4">
-              <p className="text-xs text-dark-400 mb-0.5">Catatan</p>
-              <p className="text-sm text-dark-900">{event.notes}</p>
-            </div>
-          )}
-        </Card>
-      ) : (
-        <Outlet context={{ event, refreshEvent: fetchEvent }} />
-      )}
+      {/* Tab Content - rendered inline */}
+      {renderTabContent()}
 
       {/* Confirm Dialogs */}
       <ConfirmDialog

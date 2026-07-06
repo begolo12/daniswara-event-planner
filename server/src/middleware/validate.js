@@ -28,7 +28,7 @@ export const createUserValidation = [
 
 export const createEventValidation = [
   body('name').notEmpty().withMessage('Nama event harus diisi'),
-  body('event_type_id').isInt().withMessage('Tipe event harus dipilih'),
+  body('event_type_id').optional({ nullable: true }).isInt().withMessage('Tipe event harus berupa angka'),
   body('event_date').notEmpty().withMessage('Tanggal event harus diisi'),
   handleValidation,
 ];
@@ -53,7 +53,7 @@ export const createChecklistValidation = [
 
 export const createTaskValidation = [
   body('task_name').notEmpty().withMessage('Nama tugas harus diisi'),
-  body('pic_id').isInt().withMessage('PIC harus dipilih'),
+  body('pic_id').optional({ nullable: true }).isInt().withMessage('PIC harus berupa angka'),
   handleValidation,
 ];
 

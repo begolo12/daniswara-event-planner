@@ -41,7 +41,8 @@ export async function generateEvent(req, res) {
     console.log('[AI Generate] eventData:', JSON.stringify(eventData).substring(0, 200));
     console.log('[AI Generate] outputs:', outputs);
 
-    const result = await aiService.generate(eventData, outputs, req.user.id);
+    const mode = req.body.mode || 'full_proposal';
+    const result = await aiService.generate(eventData, outputs, req.user.id, null, mode);
     return formatResponse(res, { data: result.data, message: 'Generasi AI berhasil' });
   } catch (error) {
     console.error('AI generate event error:', error);

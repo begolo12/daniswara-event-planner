@@ -50,7 +50,7 @@ export const createChecklistRules = [
 
 export const createTaskRules = [
   body('task_name').notEmpty().withMessage('Nama tugas harus diisi'),
-  body('pic_id').isInt().withMessage('PIC harus dipilih'),
+  body('pic_id').optional({ nullable: true }).isInt().withMessage('PIC harus berupa angka'),
 ];
 
 export const createBudgetRules = [

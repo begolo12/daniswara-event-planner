@@ -38,7 +38,7 @@ export default function EventCalendar({
 
   const getEventsForDay = (day) => {
     return events.filter((evt) => {
-      const evtDate = parseDate(evt.startDate || evt.date);
+      const evtDate = parseDate(evt.event_date || evt.start_date || evt.startDate || evt.date);
       return evtDate && isSameDay(evtDate, day);
     });
   };

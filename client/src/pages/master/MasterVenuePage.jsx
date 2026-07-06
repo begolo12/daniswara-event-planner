@@ -39,7 +39,12 @@ export default function MasterVenuePage() {
     setLoading(true);
     try {
       const res = await masterService.venues.list();
-      setItems(res.data?.data || []);
+      const raw = res.data?.data || [];
+      setItems(Array.isArray(raw) ? raw.map((v) => ({
+        ...v,
+        contactPerson: v.contact_person || v.contactPerson || '',
+        contactPhone: v.contact_phone || v.contactPhone || '',
+      })) : []);
     } catch {
       toast.error('Gagal memuat data');
     } finally {
@@ -66,8 +71,8 @@ export default function MasterVenuePage() {
     const facs = Array.isArray(item.facilities) ? item.facilities.join(', ') : item.facilities || '';
     setForm({
       name: item.name || '', address: item.address || '',
-      capacity: item.capacity || '', contactPerson: item.contactPerson || '',
-      contactPhone: item.contactPhone || '', email: item.email || '',
+      capacity: item.capacity || '', contactPerson: item.contact_person || item.contactPerson || '',
+      contactPhone: item.contact_phone || item.contactPhone || '', email: item.email || '',
       facilities: facs, notes: item.notes || '', status: item.status || 'active',
     });
     setShowModal(true);

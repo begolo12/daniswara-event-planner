@@ -16,7 +16,6 @@ const initialForm = {
   name: '',
   eventType: '',
   startDate: '',
-  endDate: '',
   startTime: '',
   endTime: '',
   location: '',
@@ -76,12 +75,27 @@ export default function EventCreatePage() {
     }
     setLoading(true);
     try {
-      const payload = { ...form };
-      if (payload.targetParticipants) payload.targetParticipants = Number(payload.targetParticipants);
-      if (payload.budget) payload.budget = Number(payload.budget);
-      await eventService.create(payload);
+      // Map camelCase form fields to snake_case API fields
+      const payload = {
+        name: form.name,
+        event_type_id: form.eventType || null,
+        event_date: form.startDate,
+        start_time: form.startTime || '09:00',
+        end_time: form.endTime || '17:00',
+        location: form.location,
+        venue: form.venue,
+        format: form.format,
+        estimated_participants: form.targetParticipants ? Number(form.targetParticipants) : null,
+        goal: form.goal,
+        tone: form.tone,
+        budget_max: form.budget ? Number(form.budget) : null,
+        division: form.division,
+        notes: form.notes,
+        status: 'draft',
+      };
+      const res = await eventService.create(payload);
       toast.success('Event berhasil dibuat');
-      navigate('/events');
+      navigate(`/events/${res.data.data.id}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Gagal membuat event');
     } finally {
@@ -126,17 +140,10 @@ export default function EventCreatePage() {
           <h2 className="text-lg font-semibold text-dark-900 mb-4">Waktu & Lokasi</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
-              label="Tanggal Mulai"
+              label="Tanggal Pelaksanaan"
               name="startDate"
               type="date"
               value={form.startDate}
-              onChange={handleChange}
-            />
-            <FormInput
-              label="Tanggal Selesai"
-              name="endDate"
-              type="date"
-              value={form.endDate}
               onChange={handleChange}
             />
             <FormInput
@@ -216,9 +223,9 @@ export default function EventCreatePage() {
           </div>
         </Card>
 
-        {/* Penanggung Jawab */}
+        {/* Penanggung Jawab & Budget */}
         <Card>
-          <h2 className="text-lg font-semibold text-dark-900 mb-4">Penanggung Jawab</h2>
+          <h2 className="text-lg font-semibold text-dark-900 mb-4">Penanggung Jawab & Anggaran</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormInput
               label="Divisi"
@@ -234,15 +241,8 @@ export default function EventCreatePage() {
               onChange={handleChange}
               placeholder="Nama PIC"
             />
-          </div>
-        </Card>
-
-        {/* Anggaran */}
-        <Card>
-          <h2 className="text-lg font-semibold text-dark-900 mb-4">Anggaran</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-dark-700 mb-1.5">Budget</label>
+              <label className="block text-sm font-medium text-dark-700 mb-1.5">Budget (Rp)</label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-dark-400 text-sm">
                   Rp

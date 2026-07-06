@@ -6,6 +6,10 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Sparkles,
+  TrendingUp,
+  FileText,
+  List,
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import dashboardService from '../../services/dashboardService';
@@ -64,6 +68,17 @@ export default function DashboardPage() {
     day: 'numeric',
   });
 
+  // Map API snake_case fields to display
+  const totalEvents = stats?.total_events ?? 0;
+  const running = stats?.running ?? 0;
+  const completed = stats?.completed ?? 0;
+  const pendingApproval = stats?.pending_approval ?? 0;
+  const overdueTasks = stats?.overdue_tasks ?? 0;
+  const totalBudget = stats?.total_budget ?? 0;
+  const totalTasks = stats?.total_tasks ?? 0;
+  const completedTasks = stats?.completed_tasks ?? 0;
+  const taskCompletionRate = stats?.task_completion_rate ?? 0;
+
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -76,11 +91,41 @@ export default function DashboardPage() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard icon={Calendar} label="Total Event" value={stats?.totalEvents ?? 0} color="blue" />
-        <StatCard icon={PlayCircle} label="Berlangsung" value={stats?.running ?? 0} color="green" />
-        <StatCard icon={CheckCircle} label="Selesai" value={stats?.completed ?? 0} color="purple" />
-        <StatCard icon={Clock} label="Menunggu Persetujuan" value={stats?.pendingApproval ?? 0} color="yellow" />
-        <StatCard icon={AlertCircle} label="Terlambat" value={stats?.overdue ?? 0} color="red" />
+        <StatCard icon={Calendar} label="Total Event" value={totalEvents} color="blue" />
+        <StatCard icon={PlayCircle} label="Berlangsung" value={running} color="green" />
+        <StatCard icon={CheckCircle} label="Selesai" value={completed} color="purple" />
+        <StatCard icon={Clock} label="Menunggu Persetujuan" value={pendingApproval} color="yellow" />
+        <StatCard icon={AlertCircle} label="Tugas Terlambat" value={overdueTasks} color="red" />
+      </div>
+
+      {/* Budget & Task Summary */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <p className="text-xs text-dark-400 mb-1">Total Budget</p>
+          <p className="text-lg font-bold text-dark-900">
+            Rp {Number(totalBudget).toLocaleString('id-ID')}
+          </p>
+        </Card>
+        <Card>
+          <p className="text-xs text-dark-400 mb-1">Total Tugas</p>
+          <p className="text-lg font-bold text-dark-900">{totalTasks}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-dark-400 mb-1">Tugas Selesai</p>
+          <p className="text-lg font-bold text-dark-900">{completedTasks}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-dark-400 mb-1">Progress Tugas</p>
+          <div className="flex items-end gap-2">
+            <p className="text-lg font-bold text-dark-900">{taskCompletionRate}%</p>
+            <div className="flex-1 bg-gray-200 rounded-full h-2 mb-1.5">
+              <div
+                className="bg-brand-600 h-2 rounded-full transition-all"
+                style={{ width: `${Math.min(taskCompletionRate, 100)}%` }}
+              />
+            </div>
+          </div>
+        </Card>
       </div>
 
       {/* Main Grid */}
@@ -88,8 +133,8 @@ export default function DashboardPage() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           <Card>
-            <h2 className="text-lg font-semibold text-dark-900 mb-4">Anggaran</h2>
-            <BudgetChart data={stats?.budget} />
+            <h2 className="text-lg font-semibold text-dark-900 mb-4">Ringkasan Budget</h2>
+            <BudgetChart data={stats?.budget_breakdown || []} />
           </Card>
 
           <Card>
@@ -118,8 +163,13 @@ export default function DashboardPage() {
           </Card>
 
           <Card>
-            <h2 className="text-lg font-semibold text-dark-900 mb-4">Ringkasan Tugas</h2>
-            <TaskSummary overdue={overdue} />
+            <h2 className="text-lg font-semibold text-dark-900 mb-4">Ringkasan Tugas Terlambat</h2>
+            <TaskSummary data={{
+              total: totalTasks,
+              completed: completedTasks,
+              inProgress: totalTasks - completedTasks - overdueTasks,
+              notStarted: overdueTasks,
+            }} />
           </Card>
         </div>
       </div>

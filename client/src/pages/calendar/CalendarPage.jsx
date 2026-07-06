@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -48,12 +49,14 @@ const TYPE_COLORS = [
 ];
 
 const WEEKDAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const WEEKDAYS_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 const STATUS_OPTIONS = Object.entries(EVENT_STATUSES).map(([value, { label }]) => ({
   value,
   label,
 }));
 
 export default function CalendarPage() {
+  const navigate = useNavigate();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [events, setEvents] = useState([]);
   const [eventTypes, setEventTypes] = useState([]);
@@ -89,7 +92,7 @@ export default function CalendarPage() {
 
   const filteredEvents = useMemo(() => {
     let result = events;
-    if (filterType) result = result.filter((e) => e.typeId === filterType);
+    if (filterType) result = result.filter((e) => String(e.type_id) === filterType);
     if (filterStatus) result = result.filter((e) => e.status === filterStatus);
     return result;
   }, [events, filterType, filterStatus]);
@@ -97,7 +100,7 @@ export default function CalendarPage() {
   const eventsByDate = useMemo(() => {
     const map = {};
     filteredEvents.forEach((event) => {
-      const dateKey = event.startDate?.slice(0, 10) || event.date?.slice(0, 10);
+      const dateKey = event.event_date?.slice(0, 10) || event.start_date?.slice(0, 10) || event.date?.slice(0, 10);
       if (!dateKey) return;
       if (!map[dateKey]) map[dateKey] = [];
       map[dateKey].push(event);
@@ -130,6 +133,7 @@ export default function CalendarPage() {
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            aria-label="Filter tipe event"
           >
             <option value="">Semua Tipe</option>
             {eventTypes.map((t) => (
@@ -140,6 +144,7 @@ export default function CalendarPage() {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-dark-900 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            aria-label="Filter status event"
           >
             <option value="">Semua Status</option>
             {STATUS_OPTIONS.map((s) => (
@@ -151,13 +156,13 @@ export default function CalendarPage() {
 
       {/* Month Navigation */}
       <div className="flex items-center justify-between bg-white rounded-xl px-4 py-3 shadow-sm">
-        <Button variant="ghost" size="sm" onClick={() => navigateMonth('prev')}>
+        <Button variant="ghost" size="sm" onClick={() => navigateMonth('prev')} aria-label="Bulan sebelumnya">
           <ChevronLeft size={18} />
         </Button>
         <h2 className="text-lg font-semibold text-dark-900 capitalize">
           {format(currentMonth, 'MMMM yyyy', { locale: idLocale })}
         </h2>
-        <Button variant="ghost" size="sm" onClick={() => navigateMonth('next')}>
+        <Button variant="ghost" size="sm" onClick={() => navigateMonth('next')} aria-label="Bulan berikutnya">
           <ChevronRight size={18} />
         </Button>
       </div>
@@ -171,9 +176,10 @@ export default function CalendarPage() {
         <div className="bg-white rounded-xl shadow-sm overflow-hidden">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 border-b border-gray-100">
-            {WEEKDAYS.map((day) => (
-              <div key={day} className="px-2 py-3 text-center text-xs font-semibold text-dark-500 uppercase">
-                {day}
+            {WEEKDAYS.map((day, i) => (
+              <div key={day} className="px-1 sm:px-2 py-3 text-center text-[10px] sm:text-xs font-semibold text-dark-500 uppercase">
+                <span className="hidden sm:inline">{WEEKDAYS_FULL[i]}</span>
+                <span className="sm:hidden">{day}</span>
               </div>
             ))}
           </div>
@@ -191,12 +197,15 @@ export default function CalendarPage() {
                 <div
                   key={dateKey}
                   onClick={() => setSelectedDate(day)}
-                  className={`min-h-[80px] sm:min-h-[100px] p-1.5 sm:p-2 border-b border-r border-gray-50 cursor-pointer transition-colors
+                  className={`min-h-[48px] sm:min-h-[80px] md:min-h-[100px] p-1 sm:p-1.5 md:p-2 border-b border-r border-gray-50 cursor-pointer transition-colors
                     ${selected ? 'bg-brand-50' : 'hover:bg-gray-50'}
                     ${!inMonth ? 'bg-gray-50/50' : ''}`}
+                  role="button"
+                  aria-label={`${format(day, 'd MMMM yyyy', { locale: idLocale })}${dayEvents.length > 0 ? `, ${dayEvents.length} event` : ''}`}
+                  tabIndex={0}
                 >
                   <span
-                    className={`inline-flex items-center justify-center w-7 h-7 text-sm rounded-full
+                    className={`inline-flex items-center justify-center w-6 h-6 sm:w-7 sm:h-7 text-xs sm:text-sm rounded-full
                       ${today ? 'bg-red-500 text-white font-bold' : ''}
                       ${!today && !inMonth ? 'text-gray-300' : ''}
                       ${!today && inMonth ? 'text-dark-700' : ''}`}
@@ -204,17 +213,28 @@ export default function CalendarPage() {
                     {format(day, 'd')}
                   </span>
 
-                  <div className="mt-1 space-y-0.5">
-                    {dayEvents.slice(0, 3).map((event, i) => (
-                      <div
-                        key={event.id || i}
-                        className={`w-full h-1.5 rounded-full ${STATUS_COLORS[event.status] || getStatusColorForType(event, i)}`}
-                        title={event.name}
-                      />
-                    ))}
-                    {dayEvents.length > 3 && (
-                      <span className="text-[10px] text-dark-400">+{dayEvents.length - 3} lainnya</span>
-                    )}
+                  {/* Event indicators */}
+                  <div className="mt-0.5 space-y-0.5">
+                    {/* Desktop: show event names */}
+                    <div className="hidden sm:block">
+                      {dayEvents.slice(0, 2).map((event, i) => (
+                        <div
+                          key={event.id || i}
+                          className="w-full h-1.5 rounded-full mb-0.5"
+                          style={{ backgroundColor: getStatusColor(event.status) }}
+                          title={event.name}
+                        />
+                      ))}
+                      {dayEvents.length > 2 && (
+                        <span className="text-[10px] text-dark-400">+{dayEvents.length - 2}</span>
+                      )}
+                    </div>
+                    {/* Mobile: show count */}
+                    <div className="sm:hidden">
+                      {dayEvents.length > 0 && (
+                        <span className="text-[8px] text-dark-500 font-medium">{dayEvents.length}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -225,15 +245,16 @@ export default function CalendarPage() {
 
       {/* Selected Date Panel */}
       {selectedDate && (
-        <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-dark-900">
+            <h3 className="font-semibold text-dark-900 text-sm sm:text-base">
               <CalendarDays size={16} className="inline mr-1.5 text-brand-600" />
               {format(selectedDate, 'EEEE, d MMMM yyyy', { locale: idLocale })}
             </h3>
             <button
               onClick={() => setSelectedDate(null)}
               className="text-sm text-dark-400 hover:text-dark-600"
+              aria-label="Tutup panel tanggal"
             >
               Tutup
             </button>
@@ -244,11 +265,18 @@ export default function CalendarPage() {
           ) : (
             <div className="space-y-3">
               {selectedDateEvents.map((event, idx) => (
-                <div key={event.id || idx} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50">
+                <div
+                  key={event.id || idx}
+                  className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors"
+                  onClick={() => event.id && navigate(`/events/${event.id}`)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Buka event ${event.name}`}
+                >
                   <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${STATUS_COLORS[event.status] || 'bg-gray-400'}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-dark-900 truncate">{event.name}</p>
-                    <div className="flex items-center gap-3 mt-1">
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
                       {event.time && (
                         <span className="text-xs text-dark-500 flex items-center gap-1">
                           <Clock size={12} /> {event.time}
@@ -276,6 +304,6 @@ export default function CalendarPage() {
   );
 }
 
-function getStatusColorForType(_event, index) {
-  return TYPE_COLORS[index % TYPE_COLORS.length] || 'bg-gray-400';
+function getStatusColor(status) {
+  return STATUS_COLORS[status] || '#9CA3AF';
 }

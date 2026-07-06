@@ -4,13 +4,10 @@ function createSubResource(resource) {
   return {
     list: (eventId, params) =>
       api.get(`/events/${eventId}/${resource}`, { params }),
-
     create: (eventId, data) =>
       api.post(`/events/${eventId}/${resource}`, data),
-
     update: (eventId, id, data) =>
       api.put(`/events/${eventId}/${resource}/${id}`, data),
-
     delete: (eventId, id) =>
       api.delete(`/events/${eventId}/${resource}/${id}`),
   };
@@ -31,7 +28,7 @@ export const rundowns = {
 export const checklists = {
   ...createSubResource('checklists'),
   toggleStatus: (eventId, id) =>
-    api.put(`/events/${eventId}/checklists/${id}/toggle`),
+    api.put(`/events/${eventId}/checklists/${id}/status`),
 };
 
 export const tasks = {
@@ -42,25 +39,38 @@ export const tasks = {
 
 export const budgets = {
   ...createSubResource('budgets'),
-  updateActual: (eventId, id, actualCost) =>
-    api.put(`/events/${eventId}/budgets/${id}/actual`, { actualCost }),
 };
 
 export const vendors = createSubResource('vendors');
 
 export const documents = {
   ...createSubResource('documents'),
-  uploadProof: (eventId, id, formData) =>
-    api.post(`/events/${eventId}/documents/${id}/proof`, formData, {
+  exportDoc: (eventId, id) =>
+    api.get(`/events/${eventId}/documents/${id}/export`),
+  uploadFile: (eventId, docId, formData) =>
+    api.post(`/events/${eventId}/documents/${docId}/proof`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
 };
 
+// Evaluation is a singleton per event (upsert), uses singular route
+export const evaluations = {
+  get: (eventId) =>
+    api.get(`/events/${eventId}/evaluation`),
+  create: (eventId, data) =>
+    api.post(`/events/${eventId}/evaluation`, data),
+};
+
+// Approvals
 export const approvals = createSubResource('approvals');
 
-export const evaluations = createSubResource('evaluations');
-
-export const feedbacks = createSubResource('feedbacks');
+// Feedback is nested under evaluation
+export const feedbacks = {
+  list: (eventId) =>
+    api.get(`/events/${eventId}/evaluation/feedback`),
+  create: (eventId, data) =>
+    api.post(`/events/${eventId}/evaluation/feedback`, data),
+};
 
 export const risks = createSubResource('risks');
 
